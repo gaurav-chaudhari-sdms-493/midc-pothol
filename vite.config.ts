@@ -9,7 +9,6 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'offline.html'],
-      filename: 'manifest.json', // Explicitly name the manifest file
       manifest: {
         name: 'PWD Pothole Work Order System',
         short_name: 'Pothole PWA',
