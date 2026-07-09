@@ -18,14 +18,37 @@ const ReportPothole = () => {
     getLocation();
   }, []);
 
+  const geocodeCoordinates = async (lat: number, lng: number) => {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (data && data.display_name) {
+        return data.display_name;
+      } else {
+        console.error('Nominatim API error:', data);
+        return `Approx. ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
+      }
+    } catch (error) {
+      console.error('Failed to fetch geocoding data from Nominatim:', error);
+      return `Approx. ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
+    }
+  };
+
   const getLocation = () => {
     setIsLocating(true);
     setLocationError(null);
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // In a real app, we would reverse geocode these coordinates
-          setLocation(`${position.coords.latitude.toFixed(4)}° N, ${position.coords.longitude.toFixed(4)}° E`);
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          const address = await geocodeCoordinates(latitude, longitude);
+          setLocation(address);
           setIsLocating(false);
         },
         (error) => {
@@ -42,7 +65,7 @@ const ReportPothole = () => {
           setLocationError(errorMessage);
           setIsLocating(false);
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       setLocation('Location not detected');
@@ -52,13 +75,10 @@ const ReportPothole = () => {
   };
 
   const handleRetryLocation = async () => {
-     // If the browser supports the Permissions API, we can check the status
      if (navigator.permissions && navigator.permissions.query) {
          try {
              const result = await navigator.permissions.query({ name: 'geolocation' });
              if (result.state === 'denied') {
-                 // The browser itself won't prompt again if it's strictly 'denied'. 
-                 // We must instruct the user to change their browser settings.
                  setLocationError('Permission is permanently denied in your browser settings. Please enable it in settings or use the Map to select manually.');
                  return;
              }
@@ -66,8 +86,6 @@ const ReportPothole = () => {
              console.error("Permissions API error", e);
          }
      }
-     
-     // Attempt to get location again; this will prompt the user if the state is 'prompt'
      getLocation();
   };
 
@@ -85,7 +103,6 @@ const ReportPothole = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call and redirect to AI analysis
     setTimeout(() => {
       navigate('/ai-analysis');
     }, 2000);
@@ -179,7 +196,7 @@ const ReportPothole = () => {
               <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Detected Location</p>
               {isLocating ? (
                 <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
-                  <RefreshCw className="w-3 h-3 animate-spin" /> Fetching location...
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Fetching address...
                 </div>
               ) : (
                 <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">{location}</p>
@@ -261,7 +278,7 @@ const ReportPothole = () => {
               </>
             ) : (
               <>
-                <Upload className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <Upload className="w-4 h-4 sm:w-5 sm:w-5 mr-2" />
                 Submit Report
               </>
             )}

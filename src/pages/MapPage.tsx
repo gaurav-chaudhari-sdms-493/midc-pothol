@@ -62,6 +62,7 @@ const MapPage = () => {
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: false,
+          mapId: "3e3c61cb78957e7b8a0752ee", // Your Map ID is preserved
         }}
       >
         {userPosition && <MarkerF position={userPosition} />}
