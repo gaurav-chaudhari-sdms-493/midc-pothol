@@ -18,6 +18,8 @@ import AboutPage from './pages/AboutPage';
 import PushNotificationPrompt from './components/common/PushNotificationPrompt';
 import ShareTargetPage from './pages/ShareTargetPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
+import PotholeReviewPage from './pages/PotholeReviewPage';
+import ReportDetailsPage from './pages/ReportDetailsPage';
 
 const queryClient = new QueryClient();
 
@@ -36,9 +38,10 @@ function App() {
             <Route path="report" element={<ReportPothole />} />
             <Route path="ai-analysis" element={<AIAnalysis />} />
             <Route path="reports" element={<ReportsList />} />
-            <Route path="reports/:id" element={<ReportDetails />} />
+            <Route path="reports/:reportId" element={<ReportDetailsPage />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="review" element={<EngineerReview />} />
+            <Route path="review/:id" element={<PotholeReviewPage />} />
             <Route path="timeline" element={<TimelinePage />} />
             <Route path="map" element={<MapPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
