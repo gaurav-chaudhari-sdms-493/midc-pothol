@@ -15,6 +15,9 @@ import NotificationsPage from './pages/NotificationsPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import AboutPage from './pages/AboutPage';
+import PushNotificationPrompt from './components/common/PushNotificationPrompt';
+import ShareTargetPage from './pages/ShareTargetPage';
+import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 
 const queryClient = new QueryClient();
 
@@ -22,6 +25,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
+        <PushNotificationPrompt />
+        <PWAInstallPrompt />
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<LandingPage />} />
@@ -38,6 +43,7 @@ function App() {
             <Route path="profile" element={<ProfilePage />} />
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="about" element={<AboutPage />} />
+            <Route path="share-target" element={<ShareTargetPage />} />
           </Route>
         </Routes>
       </Router>
