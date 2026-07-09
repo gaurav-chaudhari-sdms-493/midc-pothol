@@ -1,0 +1,199 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Search, Filter, ChevronRight, MapPin, Calendar, Activity } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+// Mock Data
+const reports = [
+  { id: 'PWD-2023-8942', date: '2023-10-25', location: 'MG Road, near Metro', severity: 'High', status: 'Assigned', team: 'Team B' },
+  { id: 'PWD-2023-8941', date: '2023-10-25', location: 'Brigade Road Junction', severity: 'Medium', status: 'In Progress', team: 'Team A' },
+  { id: 'PWD-2023-8940', date: '2023-10-24', location: 'Indiranagar 100ft Road', severity: 'Critical', status: 'Pending', team: 'Unassigned' },
+  { id: 'PWD-2023-8939', date: '2023-10-24', location: 'Koramangala 80ft Road', severity: 'Low', status: 'Completed', team: 'Team C' },
+  { id: 'PWD-2023-8938', date: '2023-10-23', location: 'Outer Ring Road, Bellandur', severity: 'High', status: 'Completed', team: 'Team B' },
+];
+
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case 'Critical': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
+    case 'High': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800';
+    case 'Medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
+    case 'Low': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800';
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400';
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'Pending': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    case 'Assigned': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+    case 'In Progress': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+    case 'Completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const ReportsList = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  return (
+    <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 shrink-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">All Reports</h1>
+        
+        <div className="flex w-full sm:w-auto gap-2">
+          <div className="relative flex-1 sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search reports..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-govBlue focus:border-govBlue text-sm"
+            />
+          </div>
+          <button className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
+            <Filter className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Filter</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:flex bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex-col">
+        <div className="overflow-x-auto flex-1">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Report ID / Date</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Severity</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th scope="col" className="relative px-6 py-3"><span className="sr-only">View</span></th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {reports.map((report, idx) => (
+                <motion.tr 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  key={report.id} 
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-govBlue dark:text-govBlue-light">{report.id}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{report.date}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900 dark:text-white font-medium">{report.location}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getSeverityColor(report.severity)}`}>
+                      {report.severity}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(report.status)}`}>
+                      {report.status}
+                    </span>
+                    <div className="text-xs text-gray-500 mt-1 ml-1">{report.team}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <Link to={`/reports/${report.id}`} className="text-gray-400 hover:text-govBlue transition-colors inline-flex items-center">
+                      View <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3 flex-1 overflow-y-auto pb-4">
+        {reports.map((report, idx) => (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            key={report.id}
+          >
+            <Link 
+              to={`/reports/${report.id}`}
+              className="block bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:border-govBlue transition-colors"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-semibold text-govBlue dark:text-govBlue-light text-sm">{report.id}</h3>
+                  <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <Calendar className="w-3 h-3 mr-1" /> {report.date}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`px-2 py-0.5 inline-flex text-[10px] font-bold uppercase rounded-full border ${getSeverityColor(report.severity)}`}>
+                    {report.severity}
+                  </span>
+                  <span className={`px-2 py-0.5 inline-flex text-[10px] font-semibold rounded-full ${getStatusColor(report.status)}`}>
+                    {report.status}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2 mb-2">
+                <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-gray-900 dark:text-white line-clamp-2">{report.location}</p>
+              </div>
+
+              {report.team !== 'Unassigned' && (
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs text-gray-600 dark:text-gray-300">Assigned to: <span className="font-medium">{report.team}</span></span>
+                </div>
+              )}
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Pagination mock */}
+      <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded-xl sm:px-6 shrink-0 mt-auto">
+        <div className="flex-1 flex justify-between sm:hidden">
+          <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+            Previous
+          </button>
+          <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+            Next
+          </button>
+        </div>
+        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Showing <span className="font-medium">1</span> to <span className="font-medium">5</span> of <span className="font-medium">97</span> results
+            </p>
+          </div>
+          <div>
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600">
+                Previous
+              </button>
+              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-govBlue text-sm font-medium text-white">
+                1
+              </button>
+              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">
+                2
+              </button>
+              <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600">
+                Next
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ReportsList;
