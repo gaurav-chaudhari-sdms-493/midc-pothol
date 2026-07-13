@@ -16,7 +16,11 @@ const ReportDetailsPage = () => {
   useEffect(() => {
     const fetchPothole = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes/${reportId}`);
+        const response = await fetch(`${API_BASE_URL}/api/potholes/${reportId}`, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
         const data = await response.json();
         setPothole(data);
       } catch (error) {

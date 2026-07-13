@@ -69,7 +69,11 @@ const MapPage = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes`);
+        const response = await fetch(`${API_BASE_URL}/api/potholes`, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch data');
         }
