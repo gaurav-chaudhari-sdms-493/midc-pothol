@@ -1,7 +1,18 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from potholes import potholes
 
 app = FastAPI()
+
+# Add CORS middleware back in with the simplest configuration
+# This is the most reliable way to handle preflight requests.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 @app.get("/api/potholes")
 async def get_potholes():
