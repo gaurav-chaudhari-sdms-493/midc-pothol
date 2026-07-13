@@ -1,17 +1,31 @@
 import { useParams } from 'react-router-dom';
-import { potholes } from '../data/potholes';
 import { GoogleMap, useLoadScript, MarkerF } from '@react-google-maps/api';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 
 const ReportDetailsPage = () => {
   const { reportId } = useParams<{ reportId: string }>();
-  const pothole = potholes.find((p) => p.id === reportId);
+  const [pothole, setPothole] = useState(null);
 
   const libraries = useMemo(() => ['marker'], []);
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string,
     libraries: libraries as any,
   });
+
+  useEffect(() => {
+    const fetchPothole = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/potholes/${reportId}`);
+        const data = await response.json();
+        setPothole(data);
+      } catch (error) {
+        console.error('Error fetching pothole:', error);
+      }
+    };
+
+    fetchPothole();
+  }, [reportId]);
 
   if (!pothole) {
     return <div className="p-4 text-center text-red-500">Report not found</div>;

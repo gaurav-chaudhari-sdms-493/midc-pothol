@@ -1,9 +1,26 @@
 import { useParams } from 'react-router-dom';
-import { potholes } from '../data/potholes';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 
 const PotholeReviewPage = () => {
   const { id } = useParams<{ id: string }>();
-  const pothole = potholes.find((p) => p.id === parseInt(id || ''));
+  const [pothole, setPothole] = useState(null);
+
+  useEffect(() => {
+    const fetchPothole = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/potholes/${id}`);
+        const data = await response.json();
+        setPothole(data);
+      } catch (error) {
+        console.error('Error fetching pothole:', error);
+      }
+    };
+
+    if (id) {
+      fetchPothole();
+    }
+  }, [id]);
 
   if (!pothole) {
     return <div>Pothole not found</div>;

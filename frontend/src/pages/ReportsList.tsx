@@ -1,16 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Filter, ChevronRight, MapPin, Calendar, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-// Mock Data
-const reports = [
-  { id: 'PWD-2023-8942', date: '2023-10-25', location: 'MG Road, near Metro', severity: 'High', status: 'Assigned', team: 'Team B' },
-  { id: 'PWD-2023-8941', date: '2023-10-25', location: 'Brigade Road Junction', severity: 'Medium', status: 'In Progress', team: 'Team A' },
-  { id: 'PWD-2023-8940', date: '2023-10-24', location: 'Indiranagar 100ft Road', severity: 'Critical', status: 'Pending', team: 'Unassigned' },
-  { id: 'PWD-2023-8939', date: '2023-10-24', location: 'Koramangala 80ft Road', severity: 'Low', status: 'Completed', team: 'Team C' },
-  { id: 'PWD-2023-8938', date: '2023-10-23', location: 'Outer Ring Road, Bellandur', severity: 'High', status: 'Completed', team: 'Team B' },
-];
+import { API_BASE_URL } from '../config';
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
@@ -34,6 +26,21 @@ const getStatusColor = (status: string) => {
 
 const ReportsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [reports, setReports] = useState([]);
+
+  useEffect(() => {
+    const fetchPotholes = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/potholes`);
+        const data = await response.json();
+        setReports(data);
+      } catch (error) {
+        console.error('Error fetching potholes:', error);
+      }
+    };
+
+    fetchPotholes();
+  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
@@ -84,10 +91,10 @@ const ReportsList = () => {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-govBlue dark:text-govBlue-light">{report.id}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{report.date}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{report.reportedDate}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 dark:text-white font-medium">{report.location}</div>
+                    <div className="text-sm text-gray-900 dark:text-white font-medium">{report.address}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getSeverityColor(report.severity)}`}>
@@ -129,7 +136,7 @@ const ReportsList = () => {
                 <div>
                   <h3 className="font-semibold text-govBlue dark:text-govBlue-light text-sm">{report.id}</h3>
                   <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <Calendar className="w-3 h-3 mr-1" /> {report.date}
+                    <Calendar className="w-3 h-3 mr-1" /> {report.reportedDate}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
@@ -144,10 +151,10 @@ const ReportsList = () => {
               
               <div className="flex items-start gap-2 mb-2">
                 <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-900 dark:text-white line-clamp-2">{report.location}</p>
+                <p className="text-sm text-gray-900 dark:text-white line-clamp-2">{report.address}</p>
               </div>
 
-              {report.team !== 'Unassigned' && (
+              {report.team && (
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-gray-400" />
                   <span className="text-xs text-gray-600 dark:text-gray-300">Assigned to: <span className="font-medium">{report.team}</span></span>

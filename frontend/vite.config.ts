@@ -141,5 +141,8 @@ export default defineConfig({
     hmr: {
         host: 'zips-attic-possible.ngrok-free.dev'
     }
+  },
+  build: {
+    outDir: '../dist'
   }
 });

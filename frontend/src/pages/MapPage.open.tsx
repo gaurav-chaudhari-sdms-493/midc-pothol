@@ -1,10 +1,10 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LocateFixed, User, Wrench, Filter } from 'lucide-react';
-import { potholes } from '../data/potholes';
+import { LocateFixed, User, Wrench, Filter, Loader, AlertTriangle } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { API_BASE_URL } from '../config';
 
 // Fix for default icon issue with webpack
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -57,9 +57,34 @@ const MapPage = () => {
   const [mapCenter, setMapCenter] = useState<L.LatLngExpression>([18.5204, 73.8567]);
   const [mapZoom, setMapZoom] = useState(12);
   const [userRole, setUserRole] = useState<Role>('user');
-  const [activePothole, setActivePothole] = useState<(typeof potholes)[0] | null>(null);
+  const [activePothole, setActivePothole] = useState<any | null>(null);
   const [filter, setFilter] = useState<PotholeStatus>('All');
+  const [potholes, setPotholes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchPotholes = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/potholes`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        const data = await response.json();
+        setPotholes(data);
+      } catch (e) {
+        console.error('Error fetching potholes:', e);
+        setError('Could not load pothole data. Please ensure the backend is running.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPotholes();
+  }, []);
 
   const handleConfirmLocation = () => {
     if (selectedLocation) {
@@ -67,7 +92,7 @@ const MapPage = () => {
     }
   };
 
-  const handlePotholeClick = (pothole: (typeof potholes)[0]) => {
+  const handlePotholeClick = (pothole: any) => {
     setActivePothole(pothole);
   };
 
@@ -104,14 +129,10 @@ const MapPage = () => {
 
   const getIcon = (status: string) => {
     switch (status) {
-      case 'Reported':
-        return redIcon;
-      case 'In Progress':
-        return yellowIcon;
-      case 'Fixed':
-        return greenIcon;
-      default:
-        return new L.Icon.Default();
+      case 'Reported': return redIcon;
+      case 'In Progress': return yellowIcon;
+      case 'Fixed': return greenIcon;
+      default: return new L.Icon.Default();
     }
   }
 
@@ -140,16 +161,18 @@ const MapPage = () => {
       </div>
 
       {userRole === 'engineer' && (
-        <div className="absolute top-4 left-28 z-[1000] bg-white p-2 rounded-lg shadow-lg">
+        <div className="absolute top-4 left-28 z-[1000] bg-white p-2 rounded-lg shadow-lg flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            <select value={filter} onChange={(e) => setFilter(e.target.value as PotholeStatus)} className="bg-white border border-gray-300 rounded-md">
+            <Filter className="w-5 h-5 text-gray-600" />
+            <select value={filter} onChange={(e) => setFilter(e.target.value as PotholeStatus)} className="bg-white border border-gray-300 rounded-md text-sm">
               <option value="All">All</option>
               <option value="Reported">Reported</option>
               <option value="In Progress">In Progress</option>
               <option value="Fixed">Fixed</option>
             </select>
           </div>
+          {loading && <Loader className="w-5 h-5 animate-spin text-gray-500" />}
+          {error && <AlertTriangle className="w-5 h-5 text-red-500" title={error} />}
         </div>
       )}
 

@@ -88,7 +88,7 @@ const LandingPage = () => {
             { step: '2', title: 'AI Analysis', desc: 'Our AI instantly estimates the severity, size, and generates a work order.' },
             { step: '3', title: 'Track Progress', desc: 'Follow the repair process in real-time until the issue is completely resolved.' }
           ].map((item, idx) => (
-            <motion.div 
+            <motion.div
               key={item.step}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
