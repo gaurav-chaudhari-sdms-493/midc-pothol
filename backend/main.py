@@ -4,10 +4,16 @@ from potholes import potholes
 
 app = FastAPI()
 
+origins = [
+    "https://zips-attic-possible.ngrok-free.dev",
+    "http://localhost",
+    "http://localhost:5173",
+]
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
