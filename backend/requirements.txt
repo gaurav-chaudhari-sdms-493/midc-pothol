@@ -3,3 +3,14 @@ uvicorn
 torch
 torchvision
 Pillow
+numpy
+pandas
+scipy
+ultralytics
+opencv-python-headless
+python-multipart
+tqdm
+seaborn
+setuptools
+
+opencv-python
