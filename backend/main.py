@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from potholes import potholes
 import shutil
 import os
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Add CORS middleware
+# --- Middleware ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,11 +27,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure the 'uploads' directory exists
+# --- Static Files ---
 UPLOADS_DIR = "uploads"
 os.makedirs(UPLOADS_DIR, exist_ok=True)
+# This is the key change: Mount the 'uploads' directory to be served at the '/uploads' path
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
-# Load the model
+
+# --- Model Loading ---
 MODEL_PATH = os.path.abspath("best.pt")
 model = None
 try:
@@ -39,39 +43,26 @@ try:
     logger.info("Model loaded successfully.")
 except Exception as e:
     logger.error(f"Error loading model: {e}", exc_info=True)
-    # We can choose to not start the app if the model fails to load
-    # raise e
 
+
+# --- Helper Functions ---
 def calculate_cm_per_pixel(camera_height_m, tilt_angle_deg, fov_vertical_deg,
                              fov_horizontal_deg, image_height_px, image_width_px,
                              pothole_center_y_px):
-    """
-    Ground-plane geometric calibration.
-    Calculates how many real-world cm one pixel represents,
-    specifically at the vertical position of the detected pothole.
-    """
     tilt_rad = math.radians(tilt_angle_deg)
     fov_v_rad = math.radians(fov_vertical_deg)
     fov_h_rad = math.radians(fov_horizontal_deg)
-
-    # how far this pixel row is from the image's vertical center, as a ratio (-1 to 1)
     pixel_offset_ratio = (pothole_center_y_px - image_height_px / 2) / (image_height_px / 2)
     angle_offset = pixel_offset_ratio * (fov_v_rad / 2)
-
-    # avoid division by zero / negative distance for extreme angles
     effective_angle = tilt_rad + angle_offset
     if effective_angle <= 0.05:
-        return None  # geometry breaks down (looking near/above horizon) - can't estimate
-
-    # distance from camera to the ground point at this pixel row
+        return None
     distance_m = camera_height_m / math.tan(effective_angle)
-
-    # real-world width represented by the full image width, at that distance
     real_width_at_distance_m = 2 * distance_m * math.tan(fov_h_rad / 2)
-
     cm_per_pixel = (real_width_at_distance_m * 100) / image_width_px
     return cm_per_pixel, distance_m
 
+# --- API Endpoints ---
 @app.get("/api/potholes")
 async def get_potholes():
     return potholes
@@ -90,11 +81,9 @@ async def report_pothole(
     landmark: str = Form(None),
     notes: str = Form(None)
 ):
-    # This endpoint remains for simple reporting
     image_path = os.path.join(UPLOADS_DIR, image.filename)
     with open(image_path, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
-    
     return {
         "message": "Simple report received successfully, no analysis performed.",
         "image_path": image_path,
@@ -112,7 +101,6 @@ async def analyze_image(
     fov_horizontal_deg: float = Form(...),
     conf_threshold: float = Form(0.4)
 ):
-    # Save the uploaded image
     image_path = os.path.join(UPLOADS_DIR, image.filename)
     with open(image_path, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
@@ -120,12 +108,9 @@ async def analyze_image(
     if not model:
         raise HTTPException(status_code=500, detail="AI model not loaded.")
 
-    # Perform prediction
     results = model.predict(image_path, conf=conf_threshold)
     result = results[0]
     boxes = result.boxes
-
-    # --- Draw annotations on the image ---
     annotated_img = cv2.imread(image_path)
     img_h, img_w = annotated_img.shape[:2]
 
@@ -137,16 +122,12 @@ async def analyze_image(
         width_px = x2 - x1
         center_y = (y1 + y2) / 2
 
-        # Draw rectangle for the pothole
         cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (255, 0, 0), 3)
-        
-        # Create and draw label
         label = f"#{i+1} ({conf:.2f})"
         (label_w, label_h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
         cv2.rectangle(annotated_img, (x1, y1 - label_h - 10), (x1 + label_w + 6, y1), (255, 0, 0), -1)
         cv2.putText(annotated_img, label, (x1 + 3, y1 - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
 
-        # Calculate real-world size
         calc_result = calculate_cm_per_pixel(
             camera_height_m, tilt_angle_deg, fov_vertical_deg,
             fov_horizontal_deg, img_h, img_w, center_y
@@ -176,7 +157,6 @@ async def analyze_image(
         
         pothole_details.append(detail)
 
-    # Save the annotated image
     base, ext = os.path.splitext(image.filename)
     annotated_image_filename = f"{base}_annotated{ext}"
     annotated_image_path = os.path.join(UPLOADS_DIR, annotated_image_filename)
