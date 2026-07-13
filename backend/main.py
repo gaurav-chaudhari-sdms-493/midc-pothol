@@ -4,19 +4,23 @@ from potholes import potholes
 
 app = FastAPI()
 
+# A more robust list of allowed origins
 origins = [
-    "https://zips-attic-possible.ngrok-free.dev",
+    "https://zips-attic-possible.ngrok-free.dev", # Your specific frontend ngrok URL
     "http://localhost",
     "http://localhost:5173",
 ]
 
-# CORS Middleware
+# Regex to allow any subdomain from ngrok-free.dev
+allow_origin_regex = r"https://.*\.ngrok-free\.dev"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=allow_origin_regex, # Added regex for more flexibility
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"], # Allows all methods
+    allow_headers=["*"], # Allows all headers
 )
 
 @app.get("/api/potholes")
