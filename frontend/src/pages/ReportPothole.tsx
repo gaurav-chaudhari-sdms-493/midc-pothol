@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, MapPin, Upload, X, Map, RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const ReportPothole = () => {
   const navigate = useNavigate();
@@ -12,28 +11,25 @@ const ReportPothole = () => {
   const [location, setLocation] = useState('Location not set');
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Automatically request location on mount
+  // Camera parameters state
+  const [cameraHeight, setCameraHeight] = useState('1.2');
+  const [tiltAngle, setTiltAngle] = useState('45');
+  const [fovVertical, setFovVertical] = useState('55');
+  const [fovHorizontal, setFovHorizontal] = useState('65');
+  const [confThreshold, setConfThreshold] = useState('0.4');
+
   useEffect(() => {
     getLocation();
   }, []);
 
   const geocodeCoordinates = async (lat: number, lng: number) => {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
+      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
       const data = await response.json();
-      if (data && data.display_name) {
-        return data.display_name;
-      } else {
-        console.error('Nominatim API error:', data);
-        return `Approx. ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
-      }
+      return data?.display_name || `Approx. ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
     } catch (error) {
       console.error('Failed to fetch geocoding data from Nominatim:', error);
       return `Approx. ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
@@ -52,15 +48,8 @@ const ReportPothole = () => {
           setIsLocating(false);
         },
         (error) => {
-          console.error('Error getting location', error);
           let errorMessage = 'Could not detect location.';
-          if (error.code === error.PERMISSION_DENIED) {
-            errorMessage = 'Location permission denied. Please enable it in your browser settings or select manually.';
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            errorMessage = 'Location information is unavailable.';
-          } else if (error.code === error.TIMEOUT) {
-            errorMessage = 'The request to get user location timed out.';
-          }
+          if (error.code === error.PERMISSION_DENIED) errorMessage = 'Location permission denied.';
           setLocation('Location not detected');
           setLocationError(errorMessage);
           setIsLocating(false);
@@ -74,214 +63,147 @@ const ReportPothole = () => {
     }
   };
 
-  const handleRetryLocation = async () => {
-     if (navigator.permissions && navigator.permissions.query) {
-         try {
-             const result = await navigator.permissions.query({ name: 'geolocation' });
-             if (result.state === 'denied') {
-                 setLocationError('Permission is permanently denied in your browser settings. Please enable it in settings or use the Map to select manually.');
-                 return;
-             }
-         } catch (e) {
-             console.error("Permissions API error", e);
-         }
-     }
-     getLocation();
-  };
-
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
+      reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const dataURLtoBlob = (dataurl: string) => {
+    const arr = dataurl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) {
+      throw new Error("Invalid data URL: MIME type not found.");
+    }
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!imagePreview) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      navigate('/ai-analysis');
-    }, 2000);
+    setSubmitError(null);
+
+    const formData = new FormData();
+    formData.append('image', dataURLtoBlob(imagePreview), 'pothole.jpg');
+    formData.append('camera_height_m', cameraHeight);
+    formData.append('tilt_angle_deg', tiltAngle);
+    formData.append('fov_vertical_deg', fovVertical);
+    formData.append('fov_horizontal_deg', fovHorizontal);
+    formData.append('conf_threshold', confThreshold);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        controller.abort();
+        setSubmitError("The request timed out. Please check your connection or try again later.");
+        setIsSubmitting(false);
+    }, 30000); // 30 seconds timeout
+
+    try {
+      const response = await fetch('https://ricotta-camping-rash.ngrok-free.dev/api/analyze', { 
+        method: 'POST', 
+        body: formData,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+        throw new Error(errorData.detail || 'Analysis failed');
+      }
+      const result = await response.json();
+      navigate('/ai-analysis', { state: { analysisResult: result, baseUrl: 'https://ricotta-camping-rash.ngrok-free.dev' } });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        // Error already handled by timeout
+      } else {
+        setSubmitError((error as Error).message);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsSubmitting(false);
+      }
+    }
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 h-full flex flex-col">
-      <div>
-        <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Report a Pothole</h1>
-        <p className="mt-1 sm:mt-2 text-xs sm:text-base text-gray-600 dark:text-gray-400">Help us keep the roads safe by reporting damaged areas.</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex-1 space-y-4 sm:space-y-8 bg-white dark:bg-gray-800 p-4 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-y-auto">
-        
+      <h1 className="text-xl sm:text-3xl font-bold">Report a Pothole</h1>
+      <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto">
+        {submitError && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">{submitError}</div>}
         {/* Image Upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Pothole Photo <span className="text-status-danger">*</span>
-          </label>
-          <div 
-            className={`mt-1 flex justify-center px-4 sm:px-6 pt-5 pb-6 border-2 border-dashed rounded-xl transition-colors ${imagePreview ? 'border-govBlue bg-govBlue/5' : 'border-gray-300 dark:border-gray-600'}`}
-          >
-            <div className="space-y-1 text-center w-full relative">
+          <label className="block text-sm font-medium">Pothole Photo *</label>
+          <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl ${imagePreview ? 'border-govBlue' : 'border-gray-300'}`}>
+            <div className="space-y-1 text-center w-full">
               {imagePreview ? (
-                <div className="relative w-full h-40 sm:h-64">
+                <div className="relative w-full h-64">
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-lg" />
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setImagePreview(null); }}
-                    className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-sm"
-                  >
-                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
+                  <button type="button" onClick={() => setImagePreview(null)} className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full"><X className="w-5 h-5" /></button>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  
-                  {/* Camera Option */}
-                  <button
-                    type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-govBlue hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all cursor-pointer group"
-                  >
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                      <Camera className="h-6 w-6 text-govBlue" />
-                    </div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Camera</span>
-                    <input 
-                      ref={cameraInputRef} 
-                      type="file" 
-                      accept="image/*" 
-                      capture="environment"
-                      className="sr-only" 
-                      onChange={handleImageChange}
-                    />
-                  </button>
-
-                  <div className="hidden sm:block text-gray-400">or</div>
-
-                  {/* File Picker Option */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-govBlue hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all cursor-pointer group"
-                  >
-                    <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                      <ImageIcon className="h-6 w-6 text-gray-500 dark:text-gray-400 group-hover:text-govBlue transition-colors" />
-                    </div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-govBlue transition-colors">Gallery</span>
-                    <input 
-                      ref={fileInputRef} 
-                      type="file" 
-                      accept="image/*" 
-                      className="sr-only" 
-                      onChange={handleImageChange}
-                    />
-                  </button>
-                  
+                <div className="flex items-center justify-center gap-4">
+                  <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex flex-col items-center justify-center w-32 h-32 border-2 rounded-xl hover:border-govBlue"><Camera className="h-8 w-8 text-govBlue" /><span className="mt-2 text-sm">Camera</span></button>
+                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleImageChange} />
+                  <div className="text-gray-400">or</div>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center w-32 h-32 border-2 rounded-xl hover:border-govBlue"><ImageIcon className="h-8 w-8 text-gray-500" /><span className="mt-2 text-sm">Gallery</span></button>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
                 </div>
               )}
             </div>
           </div>
-          {!imagePreview && <p className="text-center text-[10px] sm:text-xs text-gray-500 mt-2">PNG, JPG up to 10MB</p>}
+        </div>
+
+        {/* Camera Parameters */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="camera_height_m" className="block text-sm font-medium">Camera Height (m)</label>
+            <input type="number" id="camera_height_m" value={cameraHeight} onChange={e => setCameraHeight(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+          </div>
+          <div>
+            <label htmlFor="tilt_angle_deg" className="block text-sm font-medium">Tilt Angle (°)</label>
+            <input type="number" id="tilt_angle_deg" value={tiltAngle} onChange={e => setTiltAngle(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+          </div>
+          <div>
+            <label htmlFor="fov_vertical_deg" className="block text-sm font-medium">Vertical FOV (°)</label>
+            <input type="number" id="fov_vertical_deg" value={fovVertical} onChange={e => setFovVertical(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+          </div>
+          <div>
+            <label htmlFor="fov_horizontal_deg" className="block text-sm font-medium">Horizontal FOV (°)</label>
+            <input type="number" id="fov_horizontal_deg" value={fovHorizontal} onChange={e => setFovHorizontal(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+          </div>
+          <div>
+            <label htmlFor="conf_threshold" className="block text-sm font-medium">Confidence Threshold</label>
+            <input type="number" step="0.1" min="0.1" max="0.9" id="conf_threshold" value={confThreshold} onChange={e => setConfThreshold(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+          </div>
         </div>
 
         {/* Location Info */}
-        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 sm:p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-2 sm:gap-3 flex-1 w-full">
-            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-govBlue mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Detected Location</p>
-              {isLocating ? (
-                <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
-                  <RefreshCw className="w-3 h-3 animate-spin" /> Fetching address...
-                </div>
-              ) : (
-                <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">{location}</p>
-              )}
-              {locationError && (
-                 <div className="flex items-start gap-1 text-[10px] sm:text-xs text-red-500 mt-1">
-                    <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    <span>{locationError}</span>
-                 </div>
-              )}
+        <div className="bg-gray-50 p-4 rounded-xl flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <MapPin className="w-5 h-5 text-govBlue" />
+            <div>
+              <p className="text-sm font-medium">Detected Location</p>
+              <p className="text-xs text-gray-600">{isLocating ? 'Fetching...' : location}</p>
+              {locationError && <p className="text-xs text-red-500">{locationError}</p>}
             </div>
           </div>
-          
-          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-             <button
-                type="button"
-                onClick={handleRetryLocation}
-                className="flex-1 sm:flex-none flex justify-center items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <RefreshCw className="w-3 h-3" /> Retry
-              </button>
-             <button
-                type="button"
-                onClick={() => navigate('/map')}
-                className="flex-1 sm:flex-none flex justify-center items-center gap-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <Map className="w-3 h-3" /> Map
-              </button>
-          </div>
-        </div>
-
-        {/* Additional Details */}
-        <div className="space-y-3 sm:space-y-4">
-          <div>
-            <label htmlFor="landmark" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
-              Nearby Landmark (Optional)
-            </label>
-            <input
-              type="text"
-              name="landmark"
-              id="landmark"
-              className="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-govBlue focus:ring-govBlue text-xs sm:text-sm py-2 px-3 border"
-              placeholder="e.g. Near Central Park entrance"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="notes" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
-              Additional Notes (Optional)
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              rows={2}
-              className="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-govBlue focus:ring-govBlue text-xs sm:text-sm py-2 px-3 border"
-              placeholder="Any other details that might help..."
-            />
-          </div>
+          <button type="button" onClick={getLocation} className="flex items-center gap-1 px-3 py-1.5 bg-white border rounded-lg text-xs"><RefreshCw className="w-3 h-3" /> Retry</button>
         </div>
 
         {/* Submit Button */}
-        <div className="pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700 mt-auto">
-          <button
-            type="submit"
-            disabled={!imagePreview || isSubmitting}
-            className={`w-full flex justify-center items-center py-2.5 sm:py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-sm sm:text-base font-medium text-white transition-all ${
-              !imagePreview || isSubmitting 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-accent-orange hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-orange'
-            }`}
-          >
-            {isSubmitting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 sm:w-5 sm:w-5 mr-2" />
-                Submit Report
-              </>
-            )}
+        <div className="pt-6 border-t">
+          <button type="submit" disabled={!imagePreview || isSubmitting} className="w-full flex justify-center items-center py-3 px-4 border rounded-lg shadow-sm text-base font-medium text-white bg-accent-orange disabled:bg-gray-400">
+            {isSubmitting ? 'Processing...' : 'Submit Report'}
           </button>
         </div>
       </form>
