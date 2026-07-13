@@ -1,0 +1,32 @@
+[
+  {
+    "id": "PWD-2023-8942",
+    "lat": 18.521,
+    "lng": 73.857,
+    "address": "FC Road, Pune",
+    "status": "Reported",
+    "reportedBy": "Rahul S.",
+    "reportedDate": "2023-10-26",
+    "severity": "Critical",
+    "imageUrl": "https://as2.ftcdn.net/v2/jpg/00/18/81/81/1000_F_18818150_LW0PjRkjCsyxSVnzZavgkQFlYq77bBom.jpg",
+    "estSize": "120 x 85cm",
+    "estDepth": "15cm",
+    "fixType": "Hot Mix Asphalt",
+    "estCost": "₹ 8,500"
+  },
+  {
+    "id": "PWD-2023-8943",
+    "lat": 18.535,
+    "lng": 73.865,
+    "address": "JM Road, Pune",
+    "status": "In Progress",
+    "reportedBy": "Priya M.",
+    "reportedDate": "2023-10-25",
+    "severity": "High",
+    "imageUrl": "https://as2.ftcdn.net/v2/jpg/00/18/81/81/1000_F_18818150_LW0PjRkjCsyxSVnzZavgkQFlYq77bBom.jpg",
+    "estSize": "90 x 60cm",
+    "estDepth": "10cm",
+    "fixType": "Cold Mix",
+    "estCost": "₹ 5,000"
+  }
+]

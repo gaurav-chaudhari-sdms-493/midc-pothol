@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, MapPin, Upload, X, Map, RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 const ReportPothole = () => {
   const navigate = useNavigate();
@@ -110,7 +111,7 @@ const ReportPothole = () => {
     }, 30000); // 30 seconds timeout
 
     try {
-      const response = await fetch('https://ricotta-camping-rash.ngrok-free.dev/api/analyze', { 
+      const response = await fetch(`${API_BASE_URL}/api/analyze`, { 
         method: 'POST', 
         body: formData,
         signal: controller.signal
@@ -121,7 +122,7 @@ const ReportPothole = () => {
         throw new Error(errorData.detail || 'Analysis failed');
       }
       const result = await response.json();
-      navigate('/ai-analysis', { state: { analysisResult: result, baseUrl: 'https://ricotta-camping-rash.ngrok-free.dev' } });
+      navigate('/ai-analysis', { state: { analysisResult: result } });
     } catch (error) {
       if (error.name === 'AbortError') {
         // Error already handled by timeout

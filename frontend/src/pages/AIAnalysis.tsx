@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 
 const AIAnalysis = () => {
   const location = useLocation();
-  const { analysisResult, baseUrl } = location.state || {};
+  const { analysisResult } = location.state || {};
 
   if (!analysisResult) {
     return <p>No analysis data available. Please submit a report first.</p>;
@@ -11,17 +11,10 @@ const AIAnalysis = () => {
 
   const {
     total_potholes_detected,
-    original_image_path,
-    annotated_image_path,
+    original_image_url,
+    annotated_image_url,
     pothole_details,
   } = analysisResult;
-
-  const getImageUrl = (path) => {
-    if (baseUrl) {
-      return `${baseUrl}/${path}`;
-    }
-    return `http://localhost:8000/${path}`;
-  };
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -34,7 +27,7 @@ const AIAnalysis = () => {
         <div>
           <h2 className="text-xl font-semibold mb-2">Original Image</h2>
           <img
-            src={getImageUrl(original_image_path)}
+            src={original_image_url}
             alt="Original"
             className="rounded-lg shadow-md"
           />
@@ -42,7 +35,7 @@ const AIAnalysis = () => {
         <div>
           <h2 className="text-xl font-semibold mb-2">Annotated Image</h2>
           <img
-            src={getImageUrl(annotated_image_path)}
+            src={annotated_image_url}
             alt="Annotated"
             className="rounded-lg shadow-md"
           />
