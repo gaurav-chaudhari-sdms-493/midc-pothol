@@ -5,7 +5,7 @@ import LandingPage from './pages/LandingPage';
 import ReportPothole from './pages/ReportPothole';
 import AIAnalysis from './pages/AIAnalysis';
 import ReportsList from './pages/ReportsList';
-import ReportDetails from './pages/ReportDetails';
+import MyReports from './pages/MyReports';
 import Dashboard from './pages/Dashboard';
 import EngineerReview from './pages/EngineerReview';
 import TimelinePage from './pages/TimelinePage';
@@ -18,42 +18,44 @@ import AboutPage from './pages/AboutPage';
 import PushNotificationPrompt from './components/common/PushNotificationPrompt';
 import ShareTargetPage from './pages/ShareTargetPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
-import PotholeReviewPage from './pages/PotholeReviewPage';
-import ReportDetailsPage from './pages/ReportDetailsPage';
+import ReportReviewPage from './pages/PotholeReviewPage';
+import { NotificationProvider } from './components/notifications';
+import './components/notifications/Notification.css';
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true
-      }}>
-        <PushNotificationPrompt />
-        <PWAInstallPrompt />
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<LandingPage />} />
-            <Route path="report" element={<ReportPothole />} />
-            <Route path="ai-analysis" element={<AIAnalysis />} />
-            <Route path="report-details" element={<ReportDetailsPage />} />
-            <Route path="reports" element={<ReportsList />} />
-            <Route path="reports/:reportId" element={<ReportDetailsPage />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="review" element={<EngineerReview />} />
-            <Route path="review/:id" element={<PotholeReviewPage />} />
-            <Route path="timeline" element={<TimelinePage />} />
-            <Route path="map" element={<MapPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="admin" element={<AdminDashboard />} />
-            <Route path="about" element={<AboutPage />} />
-            <Route path="share-target" element={<ShareTargetPage />} />
-          </Route>
-        </Routes>
-      </Router>
+      <NotificationProvider>
+        <Router future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}>
+          <PushNotificationPrompt />
+          <PWAInstallPrompt />
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<LandingPage />} />
+              <Route path="report" element={<ReportPothole />} />
+              <Route path="ai-analysis" element={<AIAnalysis />} />
+              <Route path="reports" element={<ReportsList />} />
+              <Route path="my-reports" element={<MyReports />} />
+              <Route path="reports/:reportId" element={<ReportReviewPage />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="review" element={<EngineerReview />} />
+              <Route path="timeline" element={<TimelinePage />} />
+              <Route path="map" element={<MapPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="about" element={<AboutPage />} />
+              <Route path="share-target" element={<ShareTargetPage />} />
+            </Route>
+          </Routes>
+        </Router>
+      </NotificationProvider>
     </QueryClientProvider>
   );
 }

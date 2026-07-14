@@ -1,64 +1,35 @@
-import json
-import os
-from sqlalchemy.orm import Session
 import database as db
-
-POTHOLES_DB_JSON = "potholes.json"
+from sqlalchemy import MetaData
 
 def migrate_data():
     """
-    Initializes the database and migrates data from potholes.json to the PostgreSQL database.
+    Applies database schema changes by dropping the old analysis tables and creating the new ones.
+    WARNING: This will delete all existing data in the analysis_sessions and detected_potholes tables.
     """
-    # Initialize the database and create tables if they don't exist
-    print("Initializing database...")
+    print("Applying database schema changes...")
+    
+    engine = db.engine
+    
+    # Reflect the existing database schema
+    meta = MetaData()
+    meta.reflect(bind=engine)
+    
+    # Drop the tables in the correct order (child then parent)
+    if 'detected_potholes' in meta.tables:
+        print("Dropping old 'detected_potholes' table...")
+        meta.tables['detected_potholes'].drop(engine)
+        
+    if 'analysis_sessions' in meta.tables:
+        print("Dropping old 'analysis_sessions' table...")
+        meta.tables['analysis_sessions'].drop(engine)
+
+    # Now, create the tables based on the new schema defined in database.py
+    print("Creating tables with the new schema...")
     db.init_db()
-    print("Database initialized.")
-
-    if not os.path.exists(POTHOLES_DB_JSON):
-        print(f"JSON file not found: {POTHOLES_DB_JSON}. No data to migrate.")
-        return
-
-    with open(POTHOLES_DB_JSON, "r") as f:
-        try:
-            potholes_data = json.load(f)
-        except json.JSONDecodeError:
-            print("Error reading JSON file. It might be empty or corrupted.")
-            return
     
-    if not potholes_data:
-        print("JSON file is empty. No data to migrate.")
-        return
-
-    db_session: Session = next(db.get_db())
-    
-    migrated_count = 0
-    skipped_count = 0
-
-    for pothole_data in potholes_data:
-        # Check if a pothole with the same ID already exists
-        exists = db_session.query(db.Pothole).filter(db.Pothole.id == pothole_data['id']).first()
-        if exists:
-            print(f"Skipping pothole with ID {pothole_data['id']} as it already exists in the database.")
-            skipped_count += 1
-            continue
-
-        # Create a new Pothole object and add it to the session
-        db_pothole = db.Pothole(**pothole_data)
-        db_session.add(db_pothole)
-        migrated_count += 1
-
-    try:
-        db_session.commit()
-        print(f"Successfully migrated {migrated_count} new records.")
-        if skipped_count > 0:
-            print(f"Skipped {skipped_count} records that already existed.")
-    except Exception as e:
-        print(f"An error occurred during migration: {e}")
-        db_session.rollback()
-    finally:
-        db_session.close()
+    print("Database schema updated successfully.")
 
 if __name__ == "__main__":
-    print("Starting data migration...")
+    print("Starting database migration...")
     migrate_data()
-    print("Data migration finished.")
+    print("Database migration finished.")

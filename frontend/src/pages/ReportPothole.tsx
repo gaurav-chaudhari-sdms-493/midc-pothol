@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, MapPin, Upload, X, Map, RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { Camera, MapPin, Upload, X, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const ReportPothole = () => {
@@ -22,6 +22,7 @@ const ReportPothole = () => {
   const [confThreshold, setConfThreshold] = useState('0.4');
 
   useEffect(() => {
+    // Attempt to get location automatically on load
     getLocation();
   }, []);
 
@@ -50,7 +51,7 @@ const ReportPothole = () => {
         },
         (error) => {
           let errorMessage = 'Could not detect location.';
-          if (error.code === error.PERMISSION_DENIED) errorMessage = 'Location permission denied.';
+          if (error.code === error.PERMISSION_DENIED) errorMessage = 'Location permission denied by user.';
           setLocation('Location not detected');
           setLocationError(errorMessage);
           setIsLocating(false);
@@ -137,11 +138,11 @@ const ReportPothole = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 h-full flex flex-col">
-      <h1 className="text-xl sm:text-3xl font-bold">Report a Pothole</h1>
-      <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto">
+    <div className="max-w-2xl mx-auto p-4 sm:p-6 pb-20 sm:pb-6">
+      <h1 className="text-2xl sm:text-3xl font-bold">Report a Pothole</h1>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-6">
         {submitError && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">{submitError}</div>}
-        {/* Image Upload */}
+        
         <div>
           <label className="block text-sm font-medium">Pothole Photo *</label>
           <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl ${imagePreview ? 'border-govBlue' : 'border-gray-300'}`}>
@@ -152,11 +153,11 @@ const ReportPothole = () => {
                   <button type="button" onClick={() => setImagePreview(null)} className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full"><X className="w-5 h-5" /></button>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-4">
-                  <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex flex-col items-center justify-center w-32 h-32 border-2 rounded-xl hover:border-govBlue"><Camera className="h-8 w-8 text-govBlue" /><span className="mt-2 text-sm">Camera</span></button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex flex-col items-center justify-center w-full sm:w-32 h-32 border-2 rounded-xl hover:border-govBlue"><Camera className="h-8 w-8 text-govBlue" /><span className="mt-2 text-sm">Camera</span></button>
                   <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleImageChange} />
-                  <div className="text-gray-400">or</div>
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center w-32 h-32 border-2 rounded-xl hover:border-govBlue"><ImageIcon className="h-8 w-8 text-gray-500" /><span className="mt-2 text-sm">Gallery</span></button>
+                  <div className="text-gray-400 sm:hidden">or</div>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center w-full sm:w-32 h-32 border-2 rounded-xl hover:border-govBlue"><ImageIcon className="h-8 w-8 text-gray-500" /><span className="mt-2 text-sm">Gallery</span></button>
                   <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
                 </div>
               )}
@@ -164,8 +165,7 @@ const ReportPothole = () => {
           </div>
         </div>
 
-        {/* Camera Parameters */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <label htmlFor="camera_height_m" className="block text-sm font-medium">Camera Height (m)</label>
             <input type="number" id="camera_height_m" value={cameraHeight} onChange={e => setCameraHeight(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
@@ -182,26 +182,33 @@ const ReportPothole = () => {
             <label htmlFor="fov_horizontal_deg" className="block text-sm font-medium">Horizontal FOV (°)</label>
             <input type="number" id="fov_horizontal_deg" value={fovHorizontal} onChange={e => setFovHorizontal(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label htmlFor="conf_threshold" className="block text-sm font-medium">Confidence Threshold</label>
             <input type="number" step="0.1" min="0.1" max="0.9" id="conf_threshold" value={confThreshold} onChange={e => setConfThreshold(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
           </div>
         </div>
 
-        {/* Location Info */}
-        <div className="bg-gray-50 p-4 rounded-xl flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <MapPin className="w-5 h-5 text-govBlue" />
-            <div>
-              <p className="text-sm font-medium">Detected Location</p>
-              <p className="text-xs text-gray-600">{isLocating ? 'Fetching...' : location}</p>
-              {locationError && <p className="text-xs text-red-500">{locationError}</p>}
+        <div className="bg-gray-50 p-4 rounded-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-start gap-3">
+              <MapPin className="w-5 h-5 text-govBlue" />
+              <div>
+                <p className="text-sm font-medium">Detected Location</p>
+                <p className="text-xs text-gray-600">{isLocating ? 'Fetching...' : location}</p>
+              </div>
             </div>
+            <button type="button" onClick={getLocation} className="flex items-center gap-1 px-3 py-1.5 bg-white border rounded-lg text-xs"><RefreshCw className="w-3 h-3" /> Retry</button>
           </div>
-          <button type="button" onClick={getLocation} className="flex items-center gap-1 px-3 py-1.5 bg-white border rounded-lg text-xs"><RefreshCw className="w-3 h-3" /> Retry</button>
+          {locationError && (
+            <div className="mt-3 text-center">
+              <p className="text-xs text-red-500 mb-2">{locationError}</p>
+              <button type="button" onClick={getLocation} className="w-full text-white bg-blue-500 hover:bg-blue-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                Allow Location Access
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Submit Button */}
         <div className="pt-6 border-t">
           <button type="submit" disabled={!imagePreview || isSubmitting} className="w-full flex justify-center items-center py-3 px-4 border rounded-lg shadow-sm text-base font-medium text-white bg-accent-orange disabled:bg-gray-400">
             {isSubmitting ? 'Processing...' : 'Submit Report'}

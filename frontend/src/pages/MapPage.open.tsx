@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocateFixed, User, Wrench, Filter, Loader, AlertTriangle } from 'lucide-react';
@@ -15,9 +15,9 @@ L.Icon.Default.mergeOptions({
 });
 
 type Role = 'user' | 'engineer';
-type PotholeStatus = 'Reported' | 'In Progress' | 'Fixed' | 'All';
+type ReportStatus = 'Reported' | 'In Progress' | 'Fixed' | 'All';
 
-const LocationMarker = ({ setUserPosition, setMapCenter, setMapZoom }: any) => {
+const LocationMarker = ({ setUserPosition, setMapCenter }: any) => {
   const map = useMap();
 
   const handleLocateUser = () => {
@@ -25,7 +25,6 @@ const LocationMarker = ({ setUserPosition, setMapCenter, setMapZoom }: any) => {
       setUserPosition(e.latlng);
       map.flyTo(e.latlng, 16);
       setMapCenter(e.latlng);
-      setMapZoom(16);
     });
   };
 
@@ -33,43 +32,34 @@ const LocationMarker = ({ setUserPosition, setMapCenter, setMapZoom }: any) => {
     handleLocateUser();
   }, [map]);
 
-  return null;
-}
-
-const MapEvents = ({ setSelectedLocation, setUserPosition, setActivePothole, userRole }: any) => {
-  useMapEvents({
-    click(e) {
-      if (userRole === 'user') {
-        setSelectedLocation(e.latlng);
-        setUserPosition(null);
-        setActivePothole(null);
-      } else {
-        setActivePothole(null);
-      }
-    },
-  });
-  return null;
+  return (
+    <button
+      onClick={handleLocateUser}
+      className="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg"
+      aria-label="Locate me"
+    >
+      <LocateFixed className="w-5 h-5" />
+    </button>
+  );
 }
 
 const MapPage = () => {
   const [userPosition, setUserPosition] = useState<L.LatLng | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<L.LatLng | null>(null);
   const [mapCenter, setMapCenter] = useState<L.LatLngExpression>([18.5204, 73.8567]);
-  const [mapZoom, setMapZoom] = useState(12);
   const [userRole, setUserRole] = useState<Role>('user');
-  const [activePothole, setActivePothole] = useState<any | null>(null);
-  const [filter, setFilter] = useState<PotholeStatus>('All');
-  const [potholes, setPotholes] = useState([]);
+  const [activeReport, setActiveReport] = useState<any | null>(null);
+  const [filter, setFilter] = useState<ReportStatus>('All');
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchPotholes = async () => {
+    const fetchReports = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes`, {
+        const response = await fetch(`${API_BASE_URL}/api/reports`, {
           headers: {
             'ngrok-skip-browser-warning': 'true'
           }
@@ -78,30 +68,24 @@ const MapPage = () => {
           throw new Error('Failed to fetch data');
         }
         const data = await response.json();
-        setPotholes(data);
+        setReports(data.filter(report => report.lat && report.lng));
       } catch (e) {
-        console.error('Error fetching potholes:', e);
-        setError('Could not load pothole data. Please ensure the backend is running.');
+        console.error('Error fetching reports:', e);
+        setError('Could not load report data. Please ensure the backend is running.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPotholes();
+    fetchReports();
   }, []);
 
-  const handleConfirmLocation = () => {
-    if (selectedLocation) {
-      alert(`Location confirmed at: \nLat: ${selectedLocation.lat}, \nLng: ${selectedLocation.lng}`);
-    }
+  const handleReportClick = (report: any) => {
+    setActiveReport(report);
   };
 
-  const handlePotholeClick = (pothole: any) => {
-    setActivePothole(pothole);
-  };
-
-  const handleViewMore = (potholeId: string) => {
-    navigate(`/reports/${potholeId}`);
+  const handleViewMore = (reportId: string) => {
+    navigate(`/reports/${reportId}`);
   };
 
   const redIcon = new L.Icon({
@@ -140,9 +124,9 @@ const MapPage = () => {
     }
   }
 
-  const filteredPotholes = potholes.filter(pothole => {
+  const filteredReports = reports.filter(report => {
     if (filter === 'All') return true;
-    return pothole.status === filter;
+    return report.status === filter;
   });
 
   return (
@@ -168,7 +152,7 @@ const MapPage = () => {
         <div className="absolute top-4 left-28 z-[1000] bg-white p-2 rounded-lg shadow-lg flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-gray-600" />
-            <select value={filter} onChange={(e) => setFilter(e.target.value as PotholeStatus)} className="bg-white border border-gray-300 rounded-md text-sm">
+            <select value={filter} onChange={(e) => setFilter(e.target.value as ReportStatus)} className="bg-white border border-gray-300 rounded-md text-sm">
               <option value="All">All</option>
               <option value="Reported">Reported</option>
               <option value="In Progress">In Progress</option>
@@ -180,38 +164,36 @@ const MapPage = () => {
         </div>
       )}
 
-      <MapContainer center={mapCenter} zoom={mapZoom} className="h-full w-full z-0">
+      <MapContainer center={mapCenter} zoom={12} className="h-full w-full z-0">
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <LocationMarker setUserPosition={setUserPosition} setMapCenter={setMapCenter} setMapZoom={setMapZoom} />
-        <MapEvents setSelectedLocation={setSelectedLocation} setUserPosition={setUserPosition} setActivePothole={setActivePothole} userRole={userRole} />
+        <LocationMarker setUserPosition={setUserPosition} setMapCenter={setMapCenter} />
 
-        {userRole === 'user' && userPosition && <Marker position={userPosition} />}
-        {userRole === 'user' && selectedLocation && <Marker position={selectedLocation} />}
+        {userPosition && <Marker position={userPosition} />}
 
         {userRole === 'engineer' &&
-          filteredPotholes.map((pothole) => (
+          filteredReports.map((report) => (
             <Marker
-              key={pothole.id}
-              position={[pothole.lat, pothole.lng]}
-              icon={getIcon(pothole.status)}
+              key={report.id}
+              position={[report.lat, report.lng]}
+              icon={getIcon(report.status)}
               eventHandlers={{
                 click: () => {
-                  handlePotholeClick(pothole);
+                  handleReportClick(report);
                 },
               }}
             >
-              {activePothole && activePothole.id === pothole.id && (
+              {activeReport && activeReport.id === report.id && (
                 <Popup>
                   <div className="p-2">
-                    <img src={activePothole.imageUrl} alt="Pothole" className="w-48 h-auto rounded-lg mb-2" />
-                    <h3 className="font-bold">{activePothole.address}</h3>
-                    <p>Status: {activePothole.status}</p>
-                    <p>Severity: {activePothole.severity}</p>
+                    <img src={`${activeReport.original_image_url}?t=${new Date().getTime()}`} alt="Pothole" className="w-48 h-auto rounded-lg mb-2" />
+                    <h3 className="font-bold">{activeReport.address}</h3>
+                    <p>Status: {activeReport.status}</p>
+                    <p>Severity: {activeReport.severity}</p>
                     <button
-                      onClick={() => handleViewMore(activePothole.id)}
+                      onClick={() => handleViewMore(activeReport.id)}
                       className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded mt-2 text-sm"
                     >
                       View More
@@ -222,33 +204,6 @@ const MapPage = () => {
             </Marker>
           ))}
       </MapContainer>
-
-      <button
-        onClick={() => {
-          const map = useMap();
-          map.locate().on("locationfound", function (e) {
-            setUserPosition(e.latlng);
-            map.flyTo(e.latlng, 16);
-            setMapCenter(e.latlng);
-            setMapZoom(16);
-          });
-        }}
-        className="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg"
-        aria-label="Locate me"
-      >
-        <LocateFixed className="w-5 h-5" />
-      </button>
-
-      {userRole === 'user' && selectedLocation && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-white p-4 rounded-lg shadow-lg">
-          <button
-            onClick={handleConfirmLocation}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-          >
-            Confirm Location
-          </button>
-        </div>
-      )}
 
       {userRole === 'engineer' && (
         <div className="absolute bottom-4 right-4 z-[1000] bg-white p-2 rounded-lg shadow-lg">

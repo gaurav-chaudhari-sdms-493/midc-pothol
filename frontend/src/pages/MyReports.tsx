@@ -22,17 +22,18 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const ReportsList = () => {
+const MyReports = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [reports, setReports] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState({ name: 'Anonymous' }); // Mock user
 
   useEffect(() => {
-    const fetchReports = async () => {
+    const fetchMyReports = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/reports`, {
+        const response = await fetch(`${API_BASE_URL}/api/reports?reportedBy=${user.name}`, {
           headers: {
             'ngrok-skip-browser-warning': 'true',
           },
@@ -51,8 +52,8 @@ const ReportsList = () => {
       }
     };
 
-    fetchReports();
-  }, []);
+    fetchMyReports();
+  }, [user]);
 
   useEffect(() => {
     const lowercasedSearchTerm = searchTerm.toLowerCase();
@@ -74,7 +75,7 @@ const ReportsList = () => {
   return (
     <div className="space-y-4 sm:space-y-6 h-full flex flex-col p-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 shrink-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">All Reports</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">My Reports</h1>
         
         <div className="flex w-full sm:w-auto gap-2">
           <div className="relative flex-1 sm:w-64">
@@ -100,7 +101,7 @@ const ReportsList = () => {
         <div className="text-center flex-1 flex flex-col items-center justify-center">
           <FileText className="w-16 h-16 text-gray-400 mb-4" />
           <h3 className="text-lg font-semibold text-gray-700">No Reports Found</h3>
-          <p className="text-gray-500">There are currently no reports to display.</p>
+          <p className="text-gray-500">You have not submitted any reports yet.</p>
         </div>
       ) : (
         <>
@@ -199,4 +200,4 @@ const ReportsList = () => {
   );
 };
 
-export default ReportsList;
+export default MyReports;

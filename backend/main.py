@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Depends, Response
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -7,11 +7,12 @@ import math
 from ultralytics import YOLO
 import cv2
 import numpy as np
-from typing import List, Optional
+from typing import List, Optional, Any
 from sqlalchemy.orm import Session
 import database as db
 import s3_utils
 from io import BytesIO
+import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,41 +33,36 @@ app.add_middleware(
 )
 
 # --- Pydantic Models ---
-class PotholeBase(BaseModel):
-    lat: float
-    lng: float
-    address: str
-    status: str
-    reportedBy: str
-    reportedDate: str
-    severity: str
-    imageUrl: str
+class ReportBase(BaseModel):
+    original_image_url: str
+    annotated_image_url: str
+    camera_params: Optional[Any] = None
+    pothole_details: Optional[Any] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    address: Optional[str] = None
+    status: Optional[str] = "Pending Analysis"
+    reportedBy: Optional[str] = None
+    reportedDate: Optional[datetime.datetime] = None
+    severity: Optional[str] = None
     estSize: Optional[str] = None
-    estDepth: Optional[str] = None
-    fixType: Optional[str] = None
-    estCost: Optional[str] = None
 
-class PotholeCreate(PotholeBase):
-    id: str
+class ReportCreate(ReportBase):
+    pass
 
-class PotholeUpdate(BaseModel):
+class ReportUpdate(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     address: Optional[str] = None
     status: Optional[str] = None
     reportedBy: Optional[str] = None
-    reportedDate: Optional[str] = None
     severity: Optional[str] = None
-    imageUrl: Optional[str] = None
     estSize: Optional[str] = None
-    estDepth: Optional[str] = None
-    fixType: Optional[str] = None
-    estCost: Optional[str] = None
 
-class Pothole(PotholeBase):
-    id: str
+class Report(ReportBase):
+    id: int
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Load the model
 MODEL_PATH = os.path.abspath("best.pt")
@@ -94,52 +90,55 @@ def calculate_cm_per_pixel(camera_height_m, tilt_angle_deg, fov_vertical_deg,
     cm_per_pixel = (real_width_at_distance_m * 100) / image_width_px
     return cm_per_pixel, distance_m
 
-@app.get("/api/potholes", response_model=List[Pothole])
-async def get_potholes(db_session: Session = Depends(db.get_db)):
-    return db_session.query(db.Pothole).all()
+# --- API Endpoints ---
+@app.get("/api/reports", response_model=List[Report])
+async def get_reports(
+    reportedBy: Optional[str] = None, 
+    status: Optional[str] = None, 
+    db_session: Session = Depends(db.get_db)
+):
+    query = db_session.query(db.Report)
+    if reportedBy:
+        query = query.filter(db.Report.reportedBy == reportedBy)
+    if status:
+        query = query.filter(db.Report.status == status)
+    return query.all()
 
-@app.get("/api/potholes/{pothole_id}", response_model=Pothole)
-async def get_pothole(pothole_id: str, db_session: Session = Depends(db.get_db)):
-    pothole = db_session.query(db.Pothole).filter(db.Pothole.id == pothole_id).first()
-    if not pothole:
-        raise HTTPException(status_code=404, detail="Pothole not found")
-    return pothole
+@app.get("/api/reports/{report_id}", response_model=Report)
+async def get_report(report_id: int, db_session: Session = Depends(db.get_db)):
+    report = db_session.query(db.Report).filter(db.Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
 
-@app.post("/api/potholes", response_model=Pothole)
-async def create_pothole(pothole: PotholeCreate, db_session: Session = Depends(db.get_db)):
-    db_pothole = db.Pothole(**pothole.dict())
-    db_session.add(db_pothole)
-    db_session.commit()
-    db_session.refresh(db_pothole)
-    return db_pothole
-
-@app.put("/api/potholes/{pothole_id}", response_model=Pothole)
-async def update_pothole(pothole_id: str, pothole_update: PotholeUpdate, db_session: Session = Depends(db.get_db)):
-    db_pothole = db_session.query(db.Pothole).filter(db.Pothole.id == pothole_id).first()
-    if not db_pothole:
-        raise HTTPException(status_code=404, detail="Pothole not found")
+@app.put("/api/reports/{report_id}", response_model=Report)
+async def update_report(report_id: int, report_update: ReportUpdate, db_session: Session = Depends(db.get_db)):
+    db_report = db_session.query(db.Report).filter(db.Report.id == report_id).first()
+    if not db_report:
+        raise HTTPException(status_code=404, detail="Report not found")
     
-    update_data = pothole_update.dict(exclude_unset=True)
+    update_data = report_update.dict(exclude_unset=True)
     for key, value in update_data.items():
-        setattr(db_pothole, key, value)
+        setattr(db_report, key, value)
         
-    db_session.commit()
-    db_session.refresh(db_pothole)
-    return db_pothole
-
-@app.delete("/api/potholes/{pothole_id}", status_code=204)
-async def delete_pothole(pothole_id: str, db_session: Session = Depends(db.get_db)):
-    db_pothole = db_session.query(db.Pothole).filter(db.Pothole.id == pothole_id).first()
-    if not db_pothole:
-        raise HTTPException(status_code=404, detail="Pothole not found")
+    db_report.reportedDate = datetime.datetime.utcnow() # Update date
     
-    db_session.delete(db_pothole)
+    db_session.commit()
+    db_session.refresh(db_report)
+    return db_report
+
+@app.delete("/api/reports/{report_id}", status_code=204)
+async def delete_report(report_id: int, db_session: Session = Depends(db.get_db)):
+    db_report = db_session.query(db.Report).filter(db.Report.id == report_id).first()
+    if not db_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    db_session.delete(db_report)
     db_session.commit()
     return Response(status_code=204)
 
-@app.post("/api/analyze")
+@app.post("/api/analyze", response_model=Report)
 async def analyze_image(
-    request: Request,
     db_session: Session = Depends(db.get_db),
     image: UploadFile = File(...),
     camera_height_m: float = Form(...),
@@ -148,17 +147,29 @@ async def analyze_image(
     fov_horizontal_deg: float = Form(...),
     conf_threshold: float = Form(0.4)
 ):
-    # Read image into memory
+    # Create a placeholder report to get an ID
+    new_report = db.Report(
+        original_image_url="placeholder",
+        annotated_image_url="placeholder",
+        status="Processing"
+    )
+    db_session.add(new_report)
+    db_session.commit()
+    db_session.refresh(new_report)
+    
+    report_id = new_report.id
+    
     image_bytes = await image.read()
     
-    # Upload original image to S3 from memory
-    original_s3_url = s3_utils.upload_file_obj_to_s3(BytesIO(image_bytes), f"original/{image.filename}")
+    # Name and upload original image
+    original_filename = f"original/{report_id}.jpg"
+    original_s3_url = s3_utils.upload_file_obj_to_s3(BytesIO(image_bytes), original_filename)
     if not original_s3_url:
-        raise HTTPException(status_code=500, detail="Failed to upload original image to S3.")
+        raise HTTPException(status_code=500, detail="Failed to upload original image.")
 
-    # Perform analysis
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    annotated_img = img.copy()
     
     if not model:
         raise HTTPException(status_code=500, detail="AI model not loaded.")
@@ -166,32 +177,7 @@ async def analyze_image(
     results = model.predict(img, conf=conf_threshold)
     result = results[0]
     boxes = result.boxes
-    annotated_img = result.plot() # Use the annotated image from the model
     img_h, img_w = annotated_img.shape[:2]
-
-    # Upload annotated image to S3 from memory
-    is_success, buffer = cv2.imencode(".jpg", annotated_img)
-    if not is_success:
-        raise HTTPException(status_code=500, detail="Failed to encode annotated image.")
-    
-    annotated_image_filename = f"{os.path.splitext(image.filename)[0]}_annotated.jpg"
-    annotated_s3_url = s3_utils.upload_file_obj_to_s3(BytesIO(buffer), f"annotated/{annotated_image_filename}")
-    if not annotated_s3_url:
-        raise HTTPException(status_code=500, detail="Failed to upload annotated image to S3.")
-
-    # Create Analysis Session in DB
-    camera_params = {
-        "camera_height_m": camera_height_m, "tilt_angle_deg": tilt_angle_deg,
-        "fov_vertical_deg": fov_vertical_deg, "fov_horizontal_deg": fov_horizontal_deg
-    }
-    new_session = db.AnalysisSession(
-        original_image_url=original_s3_url,
-        annotated_image_url=annotated_s3_url,
-        camera_params=camera_params
-    )
-    db_session.add(new_session)
-    db_session.commit()
-    db_session.refresh(new_session)
 
     pothole_details = []
     for i, box in enumerate(boxes):
@@ -208,28 +194,43 @@ async def analyze_image(
         est_dist = round(calc_result[1], 2) if calc_result else None
         est_width = round(width_px * calc_result[0], 1) if calc_result else None
 
-        db_pothole = db.DetectedPothole(
-            session_id=new_session.id,
-            pothole_id_in_image=i + 1,
-            confidence=conf,
-            box_pixels={"x1": x1, "y1": y1, "x2": x2, "y2": y2},
-            estimated_distance_m=est_dist,
-            estimated_width_cm=est_width
-        )
-        db_session.add(db_pothole)
+        pothole_id_in_image = i + 1
         pothole_details.append({
-            "pothole_id_in_image": db_pothole.pothole_id_in_image,
-            "confidence": db_pothole.confidence,
-            "estimated_distance_m": db_pothole.estimated_distance_m,
-            "estimated_width_cm": db_pothole.estimated_width_cm,
+            "pothole_id_in_image": pothole_id_in_image,
+            "confidence": conf,
+            "box_pixels": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
+            "estimated_distance_m": est_dist,
+            "estimated_width_cm": est_width
         })
 
-    db_session.commit()
+        cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        label = f"Pothole #{pothole_id_in_image}: {conf:.2f}"
+        (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+        cv2.rectangle(annotated_img, (x1, y1 - h - 5), (x1 + w, y1), (0, 255, 0), -1)
+        cv2.putText(annotated_img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
-    return {
-        "session_id": new_session.id,
-        "total_potholes_detected": len(boxes),
-        "original_image_url": original_s3_url,
-        "annotated_image_url": annotated_s3_url,
-        "pothole_details": pothole_details
+    is_success, buffer = cv2.imencode(".jpg", annotated_img)
+    if not is_success:
+        raise HTTPException(status_code=500, detail="Failed to encode annotated image.")
+    
+    # Name and upload annotated image
+    annotated_filename = f"annotated/{report_id}_annotated.jpg"
+    annotated_s3_url = s3_utils.upload_file_obj_to_s3(BytesIO(buffer), annotated_filename)
+    if not annotated_s3_url:
+        raise HTTPException(status_code=500, detail="Failed to upload annotated image.")
+
+    # Update the report with the final details
+    camera_params = {
+        "camera_height_m": camera_height_m, "tilt_angle_deg": tilt_angle_deg,
+        "fov_vertical_deg": fov_vertical_deg, "fov_horizontal_deg": fov_horizontal_deg
     }
+    new_report.original_image_url = original_s3_url
+    new_report.annotated_image_url = annotated_s3_url
+    new_report.camera_params = camera_params
+    new_report.pothole_details = pothole_details
+    new_report.status = "Analyzed"
+
+    db_session.commit()
+    db_session.refresh(new_report)
+
+    return new_report
