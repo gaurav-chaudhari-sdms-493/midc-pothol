@@ -1,8 +1,9 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const AIAnalysis = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { analysisResult } = location.state || {};
 
   if (!analysisResult) {
@@ -15,6 +16,17 @@ const AIAnalysis = () => {
     annotated_image_url,
     pothole_details,
   } = analysisResult;
+
+  const handleReport = (pothole) => {
+    navigate('/report-details', {
+      state: {
+        potholeToReport: pothole,
+        analysisResult: {
+            original_image_url: original_image_url
+        }
+      }
+    });
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -51,17 +63,24 @@ const AIAnalysis = () => {
               <th className="py-3 px-6 text-left">Confidence</th>
               <th className="py-3 px-6 text-left">Est. Distance (m)</th>
               <th className="py-3 px-6 text-left">Est. Width (cm)</th>
-              <th className="py-3 px-6 text-left">Error</th>
+              <th className="py-3 px-6 text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="text-gray-600 text-sm font-light">
             {pothole_details.map((pothole) => (
-              <tr key={pothole.pothole_id} className="border-b border-gray-200 hover:bg-gray-100">
-                <td className="py-3 px-6 text-left whitespace-nowrap">{pothole.pothole_id}</td>
+              <tr key={pothole.pothole_id_in_image} className="border-b border-gray-200 hover:bg-gray-100">
+                <td className="py-3 px-6 text-left whitespace-nowrap">{pothole.pothole_id_in_image}</td>
                 <td className="py-3 px-6 text-left">{(pothole.confidence * 100).toFixed(2)}%</td>
                 <td className="py-3 px-6 text-left">{pothole.estimated_distance_m ?? 'N/A'}</td>
                 <td className="py-3 px-6 text-left">{pothole.estimated_width_cm ?? 'N/A'}</td>
-                <td className="py-3 px-6 text-left">{pothole.error || 'None'}</td>
+                <td className="py-3 px-6 text-center">
+                  <button
+                    onClick={() => handleReport(pothole)}
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                  >
+                    Report
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

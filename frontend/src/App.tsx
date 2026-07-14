@@ -37,6 +37,7 @@ function App() {
             <Route index element={<LandingPage />} />
             <Route path="report" element={<ReportPothole />} />
             <Route path="ai-analysis" element={<AIAnalysis />} />
+            <Route path="report-details" element={<ReportDetailsPage />} />
             <Route path="reports" element={<ReportsList />} />
             <Route path="reports/:reportId" element={<ReportDetailsPage />} />
             <Route path="dashboard" element={<Dashboard />} />

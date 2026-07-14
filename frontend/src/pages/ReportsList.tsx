@@ -6,8 +6,7 @@ import { API_BASE_URL } from '../config';
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
-    case 'Critical': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
-    case 'High': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800';
+    case 'High': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
     case 'Medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
     case 'Low': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800';
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400';
@@ -16,10 +15,9 @@ const getSeverityColor = (severity: string) => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Pending': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    case 'Assigned': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    case 'In Progress': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-    case 'Completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+    case 'Reported': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    case 'In Progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+    case 'Fixed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -27,24 +25,47 @@ const getStatusColor = (status: string) => {
 const ReportsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [reports, setReports] = useState([]);
+  const [filteredReports, setFilteredReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPotholes = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes`, {
-          headers: {
-            'ngrok-skip-browser-warning': 'true'
-          }
-        });
+        const response = await fetch(`${API_BASE_URL}/api/potholes`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch reports');
+        }
         const data = await response.json();
         setReports(data);
+        setFilteredReports(data);
       } catch (error) {
+        setError((error as Error).message);
         console.error('Error fetching potholes:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchPotholes();
   }, []);
+
+  useEffect(() => {
+    const lowercasedSearchTerm = searchTerm.toLowerCase();
+    const filtered = reports.filter(report =>
+      report.id.toLowerCase().includes(lowercasedSearchTerm) ||
+      report.address.toLowerCase().includes(lowercasedSearchTerm)
+    );
+    setFilteredReports(filtered);
+  }, [searchTerm, reports]);
+
+  if (loading) {
+    return <div className="p-4">Loading reports...</div>;
+  }
+
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
@@ -85,7 +106,7 @@ const ReportsList = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {reports.map((report, idx) => (
+              {filteredReports.map((report, idx) => (
                 <motion.tr 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -95,7 +116,7 @@ const ReportsList = () => {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-govBlue dark:text-govBlue-light">{report.id}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{report.reportedDate}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(report.reportedDate).toLocaleDateString()}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-white font-medium">{report.address}</div>
@@ -109,10 +130,9 @@ const ReportsList = () => {
                     <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(report.status)}`}>
                       {report.status}
                     </span>
-                    <div className="text-xs text-gray-500 mt-1 ml-1">{report.team}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link to={`/reports/${report.id}`} className="text-gray-400 hover:text-govBlue transition-colors inline-flex items-center">
+                    <Link to={`/review/${report.id}`} className="text-gray-400 hover:text-govBlue transition-colors inline-flex items-center">
                       View <ChevronRight className="w-4 h-4 ml-1" />
                     </Link>
                   </td>
@@ -125,7 +145,7 @@ const ReportsList = () => {
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3 flex-1 overflow-y-auto pb-4">
-        {reports.map((report, idx) => (
+        {filteredReports.map((report, idx) => (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -133,14 +153,14 @@ const ReportsList = () => {
             key={report.id}
           >
             <Link 
-              to={`/reports/${report.id}`}
+              to={`/review/${report.id}`}
               className="block bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:border-govBlue transition-colors"
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="font-semibold text-govBlue dark:text-govBlue-light text-sm">{report.id}</h3>
                   <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <Calendar className="w-3 h-3 mr-1" /> {report.reportedDate}
+                    <Calendar className="w-3 h-3 mr-1" /> {new Date(report.reportedDate).toLocaleDateString()}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
@@ -157,13 +177,6 @@ const ReportsList = () => {
                 <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-gray-900 dark:text-white line-clamp-2">{report.address}</p>
               </div>
-
-              {report.team && (
-                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs text-gray-600 dark:text-gray-300">Assigned to: <span className="font-medium">{report.team}</span></span>
-                </div>
-              )}
             </Link>
           </motion.div>
         ))}
@@ -182,7 +195,7 @@ const ReportsList = () => {
         <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">5</span> of <span className="font-medium">97</span> results
+              Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredReports.length}</span> of <span className="font-medium">{reports.length}</span> results
             </p>
           </div>
           <div>

@@ -1,16 +1,13 @@
 fastapi
 uvicorn
-torch
-torchvision
-Pillow
-numpy
-pandas
-scipy
+python-multipart
+pydantic
+psycopg2-binary
+sqlalchemy
+python-dotenv
 ultralytics
 opencv-python-headless
-python-multipart
-tqdm
-seaborn
-setuptools
+numpy
+boto3
 
-opencv-python
+botocore
