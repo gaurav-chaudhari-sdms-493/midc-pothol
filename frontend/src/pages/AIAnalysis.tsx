@@ -16,10 +16,11 @@ const AIAnalysis = () => {
   }
 
   const {
-    id,
     original_image_url,
     annotated_image_url,
     pothole_details,
+    camera_params,
+    message,
   } = analysisResult;
 
   const geocodeCoordinates = async (lat: number, lng: number) => {
@@ -43,23 +44,32 @@ const AIAnalysis = () => {
         const { latitude, longitude } = position.coords;
         const address = await geocodeCoordinates(latitude, longitude);
 
-        const estimatedSizes = pothole_details.map(p => p.estimated_width_cm);
-        const estSize = estimatedSizes.length > 1 
-          ? `${Math.min(...estimatedSizes).toFixed(2)} - ${Math.max(...estimatedSizes).toFixed(2)} cm`
-          : `${estimatedSizes[0].toFixed(2)} cm`;
+        const estimatedSizes = pothole_details.map(p => p.estimated_width_cm).filter(w => w !== null);
+        let estSize = null;
+        if (estimatedSizes.length > 0) {
+          estSize = estimatedSizes.length > 1 
+            ? `${Math.min(...estimatedSizes).toFixed(1)} - ${Math.max(...estimatedSizes).toFixed(1)} cm`
+            : `${estimatedSizes[0].toFixed(1)} cm`;
+        }
 
         const reportData = {
+          original_image_url,
+          annotated_image_url,
+          camera_params,
+          pothole_details,
           lat: latitude,
           lng: longitude,
           address: address,
           severity: 'Medium', // Default severity
           reportedBy: 'Anonymous', // Default user
           estSize: estSize,
+          message: message,
+          status: 'Reported',
         };
 
         try {
-          const response = await fetch(`${API_BASE_URL}/api/reports/${id}`, {
-            method: 'PUT',
+          const response = await fetch(`${API_BASE_URL}/api/reports`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
             body: JSON.stringify(reportData),
           });
@@ -69,7 +79,7 @@ const AIAnalysis = () => {
           }
 
           setSubmitStatus({ type: 'success', message: 'Report submitted successfully!' });
-          setTimeout(() => navigate('/reports'), 2000);
+          setTimeout(() => navigate('/my-reports'), 2000);
         } catch (error) {
           setSubmitStatus({ type: 'error', message: (error as Error).message });
         } finally {

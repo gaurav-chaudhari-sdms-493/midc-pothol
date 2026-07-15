@@ -1,9 +1,11 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import os
 import logging
 import math
+import uuid
 from ultralytics import YOLO
 import cv2
 import numpy as np
@@ -67,7 +69,7 @@ class Report(ReportBase):
         from_attributes = True
 
 # Load the model
-MODEL_PATH = os.path.abspath("best.pt")
+MODEL_PATH = os.path.abspath("best1.pt")
 model = None
 try:
     logger.info(f"Loading model from path: {MODEL_PATH}")
@@ -93,6 +95,14 @@ def calculate_cm_per_pixel(camera_height_m, tilt_angle_deg, fov_vertical_deg,
     return cm_per_pixel, distance_m
 
 # --- API Endpoints ---
+@app.post("/api/reports", response_model=Report)
+async def create_report(report: ReportCreate, db_session: Session = Depends(db.get_db)):
+    new_report = db.Report(**report.dict())
+    db_session.add(new_report)
+    db_session.commit()
+    db_session.refresh(new_report)
+    return new_report
+
 @app.get("/api/reports", response_model=List[Report])
 async def get_reports(
     reportedBy: Optional[str] = None, 
@@ -139,9 +149,8 @@ async def delete_report(report_id: int, db_session: Session = Depends(db.get_db)
     db_session.commit()
     return Response(status_code=204)
 
-@app.post("/api/analyze", response_model=Report)
+@app.post("/api/analyze")
 async def analyze_image(
-    db_session: Session = Depends(db.get_db),
     image: UploadFile = File(...),
     camera_height_m: float = Form(...),
     tilt_angle_deg: float = Form(...),
@@ -150,91 +159,80 @@ async def analyze_image(
     conf_threshold: float = Form(0.4),
     message: Optional[str] = Form(None)
 ):
-    # Create a placeholder report to get an ID
-    new_report = db.Report(
-        original_image_url="placeholder",
-        annotated_image_url="placeholder",
-        status="Processing",
-        message=message
-    )
-    db_session.add(new_report)
-    db_session.commit()
-    db_session.refresh(new_report)
-    
-    report_id = new_report.id
-    
+    if not model:
+        raise HTTPException(status_code=500, detail="AI model not loaded.")
+
     image_bytes = await image.read()
     
-    # Name and upload original image
-    original_filename = f"original/{report_id}.jpg"
+    # Generate a unique ID for this analysis session
+    analysis_id = str(uuid.uuid4())
+    
+    # Upload original image to S3 with the unique ID
+    original_filename = f"analysis/{analysis_id}_original.jpg"
     original_s3_url = s3_utils.upload_file_obj_to_s3(BytesIO(image_bytes), original_filename)
     if not original_s3_url:
         raise HTTPException(status_code=500, detail="Failed to upload original image.")
 
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    annotated_img = img.copy()
     
-    if not model:
-        raise HTTPException(status_code=500, detail="AI model not loaded.")
-
     results = model.predict(img, conf=conf_threshold)
     result = results[0]
     boxes = result.boxes
-    img_h, img_w = annotated_img.shape[:2]
 
     pothole_details = []
-    for i, box in enumerate(boxes):
-        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-        conf = float(box.conf[0])
-        width_px = x2 - x1
-        center_y = (y1 + y2) / 2
+    annotated_img = img.copy()
+    annotated_s3_url = original_s3_url
+
+    if len(boxes) > 0:
+        img_h, img_w = annotated_img.shape[:2]
+        for i, box in enumerate(boxes):
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            conf = float(box.conf[0])
+            width_px = x2 - x1
+            center_y = (y1 + y2) / 2
+            
+            calc_result = calculate_cm_per_pixel(
+                camera_height_m, tilt_angle_deg, fov_vertical_deg,
+                fov_horizontal_deg, img_h, img_w, center_y
+            )
+            
+            est_dist = round(calc_result[1], 2) if calc_result else None
+            est_width = round(width_px * calc_result[0], 1) if calc_result else None
+
+            pothole_id_in_image = i + 1
+            pothole_details.append({
+                "pothole_id_in_image": pothole_id_in_image,
+                "confidence": conf,
+                "box_pixels": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
+                "estimated_distance_m": est_dist,
+                "estimated_width_cm": est_width
+            })
+
+            cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            label = f"Pothole #{pothole_id_in_image}: {conf:.2f}"
+            (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+            cv2.rectangle(annotated_img, (x1, y1 - h - 5), (x1 + w, y1), (0, 255, 0), -1)
+            cv2.putText(annotated_img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+
+        is_success, buffer = cv2.imencode(".jpg", annotated_img)
+        if not is_success:
+            raise HTTPException(status_code=500, detail="Failed to encode annotated image.")
         
-        calc_result = calculate_cm_per_pixel(
-            camera_height_m, tilt_angle_deg, fov_vertical_deg,
-            fov_horizontal_deg, img_h, img_w, center_y
-        )
-        
-        est_dist = round(calc_result[1], 2) if calc_result else None
-        est_width = round(width_px * calc_result[0], 1) if calc_result else None
+        annotated_filename = f"analysis/{analysis_id}_annotated.jpg"
+        annotated_s3_url = s3_utils.upload_file_obj_to_s3(BytesIO(buffer), annotated_filename)
+        if not annotated_s3_url:
+            raise HTTPException(status_code=500, detail="Failed to upload annotated image.")
 
-        pothole_id_in_image = i + 1
-        pothole_details.append({
-            "pothole_id_in_image": pothole_id_in_image,
-            "confidence": conf,
-            "box_pixels": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
-            "estimated_distance_m": est_dist,
-            "estimated_width_cm": est_width
-        })
-
-        cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        label = f"Pothole #{pothole_id_in_image}: {conf:.2f}"
-        (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-        cv2.rectangle(annotated_img, (x1, y1 - h - 5), (x1 + w, y1), (0, 255, 0), -1)
-        cv2.putText(annotated_img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
-
-    is_success, buffer = cv2.imencode(".jpg", annotated_img)
-    if not is_success:
-        raise HTTPException(status_code=500, detail="Failed to encode annotated image.")
-    
-    # Name and upload annotated image
-    annotated_filename = f"annotated/{report_id}_annotated.jpg"
-    annotated_s3_url = s3_utils.upload_file_obj_to_s3(BytesIO(buffer), annotated_filename)
-    if not annotated_s3_url:
-        raise HTTPException(status_code=500, detail="Failed to upload annotated image.")
-
-    # Update the report with the final details
     camera_params = {
         "camera_height_m": camera_height_m, "tilt_angle_deg": tilt_angle_deg,
         "fov_vertical_deg": fov_vertical_deg, "fov_horizontal_deg": fov_horizontal_deg
     }
-    new_report.original_image_url = original_s3_url
-    new_report.annotated_image_url = annotated_s3_url
-    new_report.camera_params = camera_params
-    new_report.pothole_details = pothole_details
-    new_report.status = "Analyzed"
 
-    db_session.commit()
-    db_session.refresh(new_report)
-
-    return new_report
+    return JSONResponse(content={
+        "original_image_url": original_s3_url,
+        "annotated_image_url": annotated_s3_url,
+        "camera_params": camera_params,
+        "pothole_details": pothole_details,
+        "message": message
+    })
