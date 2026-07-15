@@ -21,11 +21,12 @@ class Report(Base):
     # Analysis details
     original_image_url = Column(String, nullable=False)
     annotated_image_url = Column(String, nullable=False)
-    detection_method = Column(String, nullable=True) # To store which model was used
+    detection_method = Column(String, nullable=True)
     camera_params = Column(JSON, nullable=True)
     pothole_details = Column(JSON, nullable=True)
     
     # User-reported details
+    user_pothole_count = Column(Integer, nullable=True)
     lat = Column(Float, index=True, nullable=True)
     lng = Column(Float, index=True, nullable=True)
     address = Column(String, nullable=True)

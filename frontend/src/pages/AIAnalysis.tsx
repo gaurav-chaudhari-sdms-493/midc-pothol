@@ -20,6 +20,7 @@ const AIAnalysis = () => {
     annotated_image_url,
     detection_method,
     pothole_details,
+    user_pothole_count,
     camera_params,
     message,
   } = analysisResult;
@@ -65,6 +66,7 @@ const AIAnalysis = () => {
           detection_method,
           camera_params: camera_params || null,
           pothole_details,
+          user_pothole_count,
           lat: latitude,
           lng: longitude,
           address: address,
@@ -187,14 +189,19 @@ const AIAnalysis = () => {
         </div>
       )}
 
-      <p className="mb-4">
-        <strong>Total Potholes Detected:</strong> {pothole_details.length}
-      </p>
-      {detection_method && (
-        <p className="mb-4">
-          <strong>Analysis Model:</strong> {detection_method}
-        </p>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div>
+          <p><strong>Your Pothole Count:</strong> {user_pothole_count || 'Not provided'}</p>
+        </div>
+        <div>
+          <p><strong>AI Detected Potholes:</strong> {pothole_details.length}</p>
+        </div>
+        {detection_method && (
+          <div className="sm:col-span-2">
+            <p><strong>Analysis Model:</strong> {detection_method}</p>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>

@@ -14,6 +14,7 @@ const ReportPothole = () => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [userPotholeCount, setUserPotholeCount] = useState<number | string>('');
 
   // Detection method state
   const [detectionMethod, setDetectionMethod] = useState('YOLO (best.pt)');
@@ -104,6 +105,9 @@ const ReportPothole = () => {
     formData.append('image', dataURLtoBlob(imagePreview), 'pothole.jpg');
     formData.append('detection_method', detectionMethod);
     formData.append('message', message);
+    if (userPotholeCount) {
+      formData.append('user_pothole_count', String(userPotholeCount));
+    }
 
     if (detectionMethod === 'YOLO (best.pt)') {
       formData.append('camera_height_m', cameraHeight);
@@ -172,6 +176,18 @@ const ReportPothole = () => {
               )}
             </div>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="user_pothole_count" className="block text-sm font-medium">How many potholes do you see?</label>
+          <input
+            type="number"
+            id="user_pothole_count"
+            value={userPotholeCount}
+            onChange={(e) => setUserPotholeCount(e.target.value)}
+            className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm"
+            min="0"
+          />
         </div>
 
         <div>

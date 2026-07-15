@@ -43,6 +43,7 @@ class ReportBase(BaseModel):
     detection_method: Optional[str] = None
     camera_params: Optional[Any] = None
     pothole_details: Optional[Any] = None
+    user_pothole_count: Optional[int] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     address: Optional[str] = None
@@ -156,6 +157,7 @@ async def delete_report(report_id: int, db_session: Session = Depends(db.get_db)
 async def analyze_image(
     image: UploadFile = File(...),
     detection_method: str = Form(...),
+    user_pothole_count: Optional[int] = Form(None),
     message: Optional[str] = Form(None),
     camera_height_m: Optional[float] = Form(None),
     tilt_angle_deg: Optional[float] = Form(None),
@@ -176,6 +178,7 @@ async def analyze_image(
     import json
     response_data = json.loads(response_content)
     response_data['detection_method'] = detection_method
+    response_data['user_pothole_count'] = user_pothole_count
     return JSONResponse(content=response_data)
 
 
