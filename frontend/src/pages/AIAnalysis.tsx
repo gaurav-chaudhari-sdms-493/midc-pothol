@@ -121,9 +121,24 @@ const AIAnalysis = () => {
         </div>
       )}
 
-      <h2 className="text-2xl font-bold mb-4">Pothole Details</h2>
       {pothole_details && pothole_details.length > 0 ? (
+        <div className="my-8 text-center">
+          <button onClick={handleCreateReport} disabled={isSubmitting} className="w-full md:w-auto bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400">
+            {isSubmitting ? 'Submitting...' : 'Create Report'}
+          </button>
+        </div>
+      ) : (
+        <div className="my-8 text-center">
+          <p className="mb-4">No potholes were detected in the image.</p>
+          <button onClick={handleGoBack} className="w-full md:w-auto bg-gray-500 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg">
+            Go Back
+          </button>
+        </div>
+      )}
+
+      {pothole_details && pothole_details.length > 0 && (
         <>
+          <h2 className="text-2xl font-bold mb-4">Pothole Details</h2>
           <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full bg-white rounded-lg shadow">
               <thead className="w-full bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
@@ -157,20 +172,7 @@ const AIAnalysis = () => {
               </div>
             ))}
           </div>
-
-          <div className="mt-6 text-center">
-            <button onClick={handleCreateReport} disabled={isSubmitting} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400">
-              {isSubmitting ? 'Submitting...' : 'Create Report'}
-            </button>
-          </div>
         </>
-      ) : (
-        <div className="text-center">
-          <p>No potholes were detected in the image.</p>
-          <button onClick={handleGoBack} className="mt-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-            Go Back
-          </button>
-        </div>
       )}
     </div>
   );
