@@ -1,187 +1,204 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
+import MapSnapshot from '../components/common/MapSnapshot';
+import { ArrowLeft, Calendar, MapPin, AlertTriangle, CheckCircle, Wrench } from 'lucide-react';
+
+const getSeverityClass = (severity) => {
+    switch (severity) {
+        case 'High': return 'text-red-600 bg-red-100';
+        case 'Medium': return 'text-yellow-600 bg-yellow-100';
+        case 'Low': return 'text-green-600 bg-green-100';
+        default: return 'text-gray-600 bg-gray-100';
+    }
+};
+
+const getStatusClass = (status) => {
+    switch (status) {
+        case 'Reported': return 'text-blue-600 bg-blue-100';
+        case 'In Progress': return 'text-purple-600 bg-purple-100';
+        case 'Fixed': return 'text-green-600 bg-green-100';
+        default: return 'text-gray-600 bg-gray-100';
+    }
+};
+
+const TimelineEvent = ({ icon: Icon, title, date, color, isLast }) => {
+    const colorClasses = {
+        blue: 'bg-blue-100 text-blue-600',
+        green: 'bg-green-100 text-green-600',
+        purple: 'bg-purple-100 text-purple-600',
+    };
+
+    return (
+        <div className="flex">
+            <div className="flex flex-col items-center mr-4">
+                <div>
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full ${colorClasses[color]}`}>
+                        <Icon className="w-5 h-5" />
+                    </div>
+                </div>
+                {!isLast && <div className="w-px h-full bg-gray-300" />}
+            </div>
+            <div className="pt-1.5 pb-8">
+                <p className="mb-0.5 text-sm font-bold text-gray-800">{title}</p>
+                {date ? (
+                    <p className="text-sm text-gray-500">{new Date(date).toLocaleString()}</p>
+                ) : (
+                    <p className="text-sm text-gray-500 italic">In progress</p>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const StatusTimeline = ({ report }) => {
+    const events = [];
+
+    events.push({
+        title: 'Reported',
+        date: report.reportedDate,
+        icon: Calendar,
+        color: 'blue'
+    });
+
+    if (report.status === 'In Progress') {
+        events.push({
+            title: 'In Progress',
+            date: null,
+            icon: Wrench,
+            color: 'purple'
+        });
+    }
+
+    if (report.fixedDate) {
+        events.push({
+            title: 'Fixed',
+            date: report.fixedDate,
+            icon: CheckCircle,
+            color: 'green'
+        });
+    }
+
+    return (
+        <div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Report History</h3>
+            {events.map((event, index) => (
+                <TimelineEvent
+                    key={index}
+                    {...event}
+                    isLast={index === events.length - 1}
+                />
+            ))}
+        </div>
+    );
+};
+
 
 const ReportDetailsPage = () => {
-  const navigate = useNavigate();
-  const { reportId } = useParams();
-  const [report, setReport] = useState(null);
-  const [formData, setFormData] = useState({
-    lat: '',
-    lng: '',
-    address: '',
-    severity: 'Medium',
-    reportedBy: 'Anonymous',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
+    const { reportId } = useParams();
+    const navigate = useNavigate();
+    const [report, setReport] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
-          headers: {
-            'ngrok-skip-browser-warning': 'true',
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch report');
-        }
-        const data = await response.json();
-        setReport(data);
-        setFormData({
-          lat: data.lat?.toString() || '',
-          lng: data.lng?.toString() || '',
-          address: data.address || '',
-          severity: data.severity || 'Medium',
-          reportedBy: data.reportedBy || 'Anonymous',
-        });
-      } catch (error) {
-        setSubmitError((error as Error).message);
-      }
-    };
+    useEffect(() => {
+        const fetchReport = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
+                    headers: { 'ngrok-skip-browser-warning': 'true' },
+                });
+                if (!response.ok) throw new Error('Failed to fetch report details.');
+                const data = await response.json();
+                setReport(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReport();
+    }, [reportId]);
 
-    if (reportId) {
-      fetchReport();
-    }
-  }, [reportId]);
+    if (loading) return <div className="p-8 text-center">Loading report...</div>;
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+    if (!report) return <div className="p-8 text-center">Report not found.</div>;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    return (
+        <div className="bg-gray-50 min-h-screen">
+            <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+                <div className="mb-6">
+                    <button onClick={() => navigate(-1)} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Reports
+                    </button>
+                </div>
 
-  const geocodeCoordinates = async (lat: number, lng: number) => {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      return data?.display_name || `Approx. ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-    } catch (error) {
-      console.error('Failed to fetch geocoding data:', error);
-      return `Approx. ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-    }
-  };
+                <div className="bg-white shadow-lg rounded-xl overflow-hidden">
+                    <div className="p-6 border-b border-gray-200">
+                        <h1 className="text-3xl font-bold text-gray-900">Report #{report.id}</h1>
+                        <p className="mt-1 text-sm text-gray-500 flex items-center">
+                            <MapPin className="w-4 h-4 mr-2" />
+                            {report.address}
+                        </p>
+                    </div>
 
-  const handleGetLocation = () => {
-    setIsLocating(true);
-    setLocationError(null);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          const address = await geocodeCoordinates(latitude, longitude);
-          setFormData((prev) => ({
-            ...prev,
-            lat: latitude.toString(),
-            lng: longitude.toString(),
-            address: address,
-          }));
-          setIsLocating(false);
-        },
-        (error) => {
-          setLocationError('Could not retrieve location. Please enter manually.');
-          setIsLocating(false);
-        }
-      );
-    } else {
-      setLocationError('Geolocation is not supported by this browser.');
-      setIsLocating(false);
-    }
-  };
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 p-6">
+                        <div className="lg:col-span-3 space-y-6">
+                            <div>
+                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Images</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div>
+                                        <p className="text-center font-medium text-gray-700 mb-2">Original Photo</p>
+                                        <img src={report.original_image_url} alt="Original pothole" className="w-full h-auto rounded-lg shadow-md" />
+                                    </div>
+                                    <div>
+                                        <p className="text-center font-medium text-gray-700 mb-2">AI Annotated</p>
+                                        <img src={report.annotated_image_url} alt="AI annotated pothole" className="w-full h-auto rounded-lg shadow-md" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitError(null);
+                        <div className="lg:col-span-2">
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Current Status</h3>
+                                    <div className="flex flex-col items-start space-y-2">
+                                        <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusClass(report.status)}`}>
+                                            {report.status}
+                                        </span>
+                                        <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getSeverityClass(report.severity)}`}>
+                                            {report.severity} Severity
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <StatusTimeline report={report} />
 
-    const { pothole_details } = report;
-    const estimatedSizes = pothole_details.map(p => p.estimated_width_cm);
-    const estSize = estimatedSizes.length > 1 
-      ? `${Math.min(...estimatedSizes).toFixed(2)} - ${Math.max(...estimatedSizes).toFixed(2)} cm`
-      : `${estimatedSizes[0].toFixed(2)} cm`;
+                                <div>
+                                    <h3 className="text-xl font-semibold text-gray-800 mb-4">AI Assessment</h3>
+                                    <div className="flex items-center">
+                                        <AlertTriangle className="w-5 h-5 text-gray-400 mr-4" />
+                                        <div>
+                                            <p className="font-medium text-gray-700">Estimated Size</p>
+                                            <p className="text-gray-600">{report.estSize}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    const reportData = {
-      lat: parseFloat(formData.lat),
-      lng: parseFloat(formData.lng),
-      address: formData.address,
-      severity: formData.severity,
-      reportedBy: formData.reportedBy,
-      estSize: estSize,
-    };
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reportData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-        throw new Error(errorData.detail || 'Failed to submit report');
-      }
-
-      navigate('/reports'); // Redirect to a confirmation or list page
-    } catch (error) {
-      setSubmitError((error as Error).message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (!report) {
-    return <div className="p-4">Loading...</div>;
-  }
-
-  return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-6">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Report Pothole Details</h1>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="sm:col-span-2">
-            <label htmlFor="address" className="block text-sm font-medium">Address</label>
-            <input type="text" name="address" id="address" value={formData.address} onChange={handleChange} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" required />
-          </div>
-          <div>
-            <label htmlFor="lat" className="block text-sm font-medium">Latitude</label>
-            <input type="text" name="lat" id="lat" value={formData.lat} onChange={handleChange} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" required />
-          </div>
-          <div>
-            <label htmlFor="lng" className="block text-sm font-medium">Longitude</label>
-            <input type="text" name="lng" id="lng" value={formData.lng} onChange={handleChange} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" required />
-          </div>
+                    <div className="p-6 border-t border-gray-200">
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Location</h3>
+                        <div className="h-80 rounded-lg overflow-hidden border border-gray-200">
+                            <MapSnapshot lat={report.lat} lng={report.lng} />
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        {locationError && <p className="text-red-500 text-sm">{locationError}</p>}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="severity" className="block text-sm font-medium">Severity</label>
-            <select name="severity" id="severity" value={formData.severity} onChange={handleChange} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="reportedBy" className="block text-sm font-medium">Reported By</label>
-            <input type="text" name="reportedBy" id="reportedBy" value={formData.reportedBy} onChange={handleChange} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
-          </div>
-        </div>
-
-        {submitError && <div className="text-red-500 text-sm">{submitError}</div>}
-        
-        <div className="pt-4">
-          <button type="submit" disabled={isSubmitting || isLocating} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400">
-            {isSubmitting ? 'Submitting...' : 'Submit Report'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
+    );
 };
 
 export default ReportDetailsPage;

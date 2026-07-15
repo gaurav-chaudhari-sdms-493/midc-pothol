@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, MapPin, CheckCircle2, XCircle, Search, Filter, Calendar, FileCheck2, ArrowLeft, Loader } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import MapSnapshot from '../components/common/MapSnapshot';
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
@@ -21,8 +22,6 @@ const GeotagOverlay = ({ report }: { report: any }) => {
   const formattedDate = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  const mapUrl = `https://static-maps.yandex.ru/v1?ll=${lng},${lat}&z=15&size=200,150&pt=${lng},${lat},pm2rdl`;
-
   return (
     <div className="absolute bottom-0 left-0 w-full bg-black bg-opacity-70 text-white p-3 rounded-b-lg text-xs font-sans">
       <div className="grid grid-cols-3 gap-2 items-center">
@@ -32,9 +31,8 @@ const GeotagOverlay = ({ report }: { report: any }) => {
           <p className="text-gray-300">{formattedDate} {formattedTime}</p>
         </div>
         <div className="col-span-1">
-          {/*TODO: Show actual snapshot instead of the image.*/}
           {lat && lng && (
-            <img src={mapUrl} alt="Map Snapshot" className="w-full h-auto rounded-md border border-gray-500" />
+            <MapSnapshot lat={lat} lng={lng} />
           )}
         </div>
       </div>

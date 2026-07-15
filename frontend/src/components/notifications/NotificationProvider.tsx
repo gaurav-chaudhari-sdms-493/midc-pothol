@@ -52,7 +52,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   return (
     <NotificationContext.Provider value={{ addNotification }}>
       {children}
-      <div className="notification-container">
+      <div className="notification-container hidden sm:block">
         {notifications.map(notification => (
           <Notification
             key={notification.id}

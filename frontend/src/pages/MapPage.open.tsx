@@ -17,41 +17,9 @@ L.Icon.Default.mergeOptions({
 type Role = 'user' | 'engineer';
 type ReportStatus = 'Reported' | 'In Progress' | 'Fixed' | 'All';
 
-const LocationMarker = ({ setUserPosition, setMapCenter, userRole }: any) => {
-  const map = useMap();
-
-  const handleLocateUser = () => {
-    map.locate().on("locationfound", function (e) {
-      setUserPosition(e.latlng);
-      map.flyTo(e.latlng, 16);
-    });
-  };
-
-  useEffect(() => {
-    if (userRole === 'user') {
-      handleLocateUser();
-    }
-  }, [map, userRole]);
-
-  if (userRole !== 'user') {
-    return null;
-  }
-
-  return (
-    <button
-      onClick={handleLocateUser}
-      className="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg"
-      aria-label="Locate me"
-    >
-      <LocateFixed className="w-5 h-5" />
-    </button>
-  );
-}
-
 const MapPage = () => {
-  const [userPosition, setUserPosition] = useState<L.LatLng | null>(null);
   const [mapCenter, setMapCenter] = useState<L.LatLngExpression>([18.5204, 73.8567]);
-  const [userRole, setUserRole] = useState<Role>('user');
+  const [userRole, setUserRole] = useState<Role>('engineer');
   const [activeReport, setActiveReport] = useState<any | null>(null);
   const [filter, setFilter] = useState<ReportStatus>('All');
   const [reports, setReports] = useState([]);
@@ -136,25 +104,8 @@ const MapPage = () => {
 
   return (
     <div className="relative h-full w-full">
-      <div className="absolute top-4 left-4 z-[1000] flex gap-2">
-        <button
-          onClick={() => setUserRole('user')}
-          className={`p-2 rounded-full shadow-lg ${userRole === 'user' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700'}`}
-          aria-label="User View"
-        >
-          <User className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => setUserRole('engineer')}
-          className={`p-2 rounded-full shadow-lg ${userRole === 'engineer' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700'}`}
-          aria-label="Engineer View"
-        >
-          <Wrench className="w-5 h-5" />
-        </button>
-      </div>
-
       {userRole === 'engineer' && (
-        <div className="absolute top-4 left-28 z-[1000] bg-white p-2 rounded-lg shadow-lg flex items-center gap-4">
+        <div className="absolute top-4 left-4 z-[1000] bg-white p-2 rounded-lg shadow-lg flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-gray-600" />
             <select value={filter} onChange={(e) => setFilter(e.target.value as ReportStatus)} className="bg-white border border-gray-300 rounded-md text-sm">
@@ -174,9 +125,6 @@ const MapPage = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <LocationMarker setUserPosition={setUserPosition} setMapCenter={setMapCenter} userRole={userRole} />
-
-        {userPosition && userRole === 'user' && <Marker position={userPosition} />}
 
         {userRole === 'engineer' &&
           filteredReports.map((report) => (
