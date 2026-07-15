@@ -13,6 +13,7 @@ const ReportPothole = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
 
   // Camera parameters state
   const [cameraHeight, setCameraHeight] = useState('1.2');
@@ -103,6 +104,7 @@ const ReportPothole = () => {
     formData.append('fov_vertical_deg', fovVertical);
     formData.append('fov_horizontal_deg', fovHorizontal);
     formData.append('conf_threshold', confThreshold);
+    formData.append('message', message);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -163,6 +165,17 @@ const ReportPothole = () => {
               )}
             </div>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="message" className="block text-sm font-medium">Optional Message</label>
+          <textarea
+            id="message"
+            rows={4}
+            className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

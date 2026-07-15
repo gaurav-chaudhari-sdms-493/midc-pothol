@@ -46,6 +46,7 @@ class ReportBase(BaseModel):
     reportedDate: Optional[datetime.datetime] = None
     severity: Optional[str] = None
     estSize: Optional[str] = None
+    message: Optional[str] = None
 
 class ReportCreate(ReportBase):
     pass
@@ -58,6 +59,7 @@ class ReportUpdate(BaseModel):
     reportedBy: Optional[str] = None
     severity: Optional[str] = None
     estSize: Optional[str] = None
+    message: Optional[str] = None
 
 class Report(ReportBase):
     id: int
@@ -145,13 +147,15 @@ async def analyze_image(
     tilt_angle_deg: float = Form(...),
     fov_vertical_deg: float = Form(...),
     fov_horizontal_deg: float = Form(...),
-    conf_threshold: float = Form(0.4)
+    conf_threshold: float = Form(0.4),
+    message: Optional[str] = Form(None)
 ):
     # Create a placeholder report to get an ID
     new_report = db.Report(
         original_image_url="placeholder",
         annotated_image_url="placeholder",
-        status="Processing"
+        status="Processing",
+        message=message
     )
     db_session.add(new_report)
     db_session.commit()

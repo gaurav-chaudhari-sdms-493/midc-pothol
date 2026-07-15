@@ -32,6 +32,7 @@ class Report(Base):
     reportedBy = Column(String, nullable=True)
     reportedDate = Column(DateTime, default=datetime.datetime.utcnow)
     severity = Column(String, nullable=True)
+    message = Column(String, nullable=True)
     
     # Consolidated fields
     estSize = Column(String, nullable=True)

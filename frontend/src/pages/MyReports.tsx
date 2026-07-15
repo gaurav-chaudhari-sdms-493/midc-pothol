@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, ChevronRight, MapPin, Calendar, FileText } from 'lucide-react';
+import { Search, Filter, ChevronRight, MapPin, Calendar, FileText, Hash, CheckCircle, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { API_BASE_URL } from '../config';
 
@@ -64,6 +64,19 @@ const MyReports = () => {
     setFilteredReports(filtered);
   }, [searchTerm, reports]);
 
+  const stats = useMemo(() => {
+    const total = reports.length;
+    const fixed = reports.filter(r => r.status === 'Fixed').length;
+    const inProgress = reports.filter(r => r.status === 'In Progress').length;
+    return { total, fixed, inProgress };
+  }, [reports]);
+
+  const statCards = [
+    { label: 'Total Reports', value: stats.total, icon: Hash, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+    { label: 'Potholes Fixed', value: stats.fixed, icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100 dark:bg-green-900/30' },
+    { label: 'In Progress', value: stats.inProgress, icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
+  ];
+
   if (loading) {
     return <div className="p-4 text-center">Loading reports...</div>;
   }
@@ -74,27 +87,47 @@ const MyReports = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 h-full flex flex-col p-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 shrink-0">
+      <div className="shrink-0">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">My Reports</h1>
-        
-        <div className="flex w-full sm:w-auto gap-2">
-          <div className="relative flex-1 sm:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 shrink-0">
+        {statCards.map((stat, i) => (
+          <motion.div 
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between"
+          >
+            <div className={`p-2 rounded-lg ${stat.bg} self-start mb-2`}>
+              <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
             </div>
-            <input
-              type="text"
-              placeholder="Search reports..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-govBlue focus:border-govBlue text-sm"
-            />
+            <div>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+              <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider">{stat.label}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="flex w-full sm:w-auto gap-2 shrink-0">
+        <div className="relative flex-1 sm:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
           </div>
-          <button className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
-            <Filter className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Filter</span>
-          </button>
+          <input
+            type="text"
+            placeholder="Search reports..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-govBlue focus:border-govBlue text-sm"
+          />
         </div>
+        <button className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
+          <Filter className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Filter</span>
+        </button>
       </div>
 
       {filteredReports.length === 0 ? (

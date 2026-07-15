@@ -17,20 +17,25 @@ L.Icon.Default.mergeOptions({
 type Role = 'user' | 'engineer';
 type ReportStatus = 'Reported' | 'In Progress' | 'Fixed' | 'All';
 
-const LocationMarker = ({ setUserPosition, setMapCenter }: any) => {
+const LocationMarker = ({ setUserPosition, setMapCenter, userRole }: any) => {
   const map = useMap();
 
   const handleLocateUser = () => {
     map.locate().on("locationfound", function (e) {
       setUserPosition(e.latlng);
       map.flyTo(e.latlng, 16);
-      setMapCenter(e.latlng);
     });
   };
 
   useEffect(() => {
-    handleLocateUser();
-  }, [map]);
+    if (userRole === 'user') {
+      handleLocateUser();
+    }
+  }, [map, userRole]);
+
+  if (userRole !== 'user') {
+    return null;
+  }
 
   return (
     <button
@@ -169,9 +174,9 @@ const MapPage = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <LocationMarker setUserPosition={setUserPosition} setMapCenter={setMapCenter} />
+        <LocationMarker setUserPosition={setUserPosition} setMapCenter={setMapCenter} userRole={userRole} />
 
-        {userPosition && <Marker position={userPosition} />}
+        {userPosition && userRole === 'user' && <Marker position={userPosition} />}
 
         {userRole === 'engineer' &&
           filteredReports.map((report) => (
