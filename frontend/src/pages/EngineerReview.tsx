@@ -12,6 +12,36 @@ const getSeverityColor = (severity: string) => {
   }
 };
 
+const GeotagOverlay = ({ report }: { report: any }) => {
+  if (!report || !report.lat || !report.lng) return null;
+
+  const { address, lat, lng, reportedDate } = report;
+  const date = new Date(reportedDate);
+
+  const formattedDate = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const mapUrl = `https://static-maps.yandex.ru/v1?ll=${lng},${lat}&z=15&size=200,150&pt=${lng},${lat},pm2rdl`;
+
+  return (
+    <div className="absolute bottom-0 left-0 w-full bg-black bg-opacity-70 text-white p-3 rounded-b-lg text-xs font-sans">
+      <div className="grid grid-cols-3 gap-2 items-center">
+        <div className="col-span-2 space-y-1">
+          <p className="font-bold text-sm truncate flex items-center gap-1.5"><MapPin className="w-3 h-3 shrink-0"/> {address}</p>
+          <p className="text-gray-300">Geo: {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}</p>
+          <p className="text-gray-300">{formattedDate} {formattedTime}</p>
+        </div>
+        <div className="col-span-1">
+          {/*TODO: Show actual snapshot instead of the image.*/}
+          {lat && lng && (
+            <img src={mapUrl} alt="Map Snapshot" className="w-full h-auto rounded-md border border-gray-500" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const EngineerReview = () => {
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
@@ -170,9 +200,10 @@ const EngineerReview = () => {
 
               <div className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 relative">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Citizen Photo</p>
                     <img src={selectedReport.original_image_url} alt="Pothole" className="rounded-lg shadow-md w-full" />
+                    <GeotagOverlay report={selectedReport} />
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">AI Annotated</p>
