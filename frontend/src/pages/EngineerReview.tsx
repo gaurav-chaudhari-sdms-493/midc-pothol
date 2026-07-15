@@ -23,7 +23,7 @@ const EngineerReview = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/reports?status=Analyzed`, {
+        const response = await fetch(`${API_BASE_URL}/api/reports?status=Reported`, {
           headers: {
             'ngrok-skip-browser-warning': 'true',
           },
