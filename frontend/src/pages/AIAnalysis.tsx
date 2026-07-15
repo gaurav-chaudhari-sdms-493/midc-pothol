@@ -23,6 +23,9 @@ const AIAnalysis = () => {
     message,
   } = analysisResult;
 
+  // Check if the analysis is from Gemini based on the fields in the details
+  const isGeminiAnalysis = pothole_details.length > 0 && 'size_category' in pothole_details[0];
+
   const geocodeCoordinates = async (lat: number, lng: number) => {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
     try {
@@ -44,18 +47,24 @@ const AIAnalysis = () => {
         const { latitude, longitude } = position.coords;
         const address = await geocodeCoordinates(latitude, longitude);
 
-        const estimatedSizes = pothole_details.map(p => p.estimated_width_cm).filter(w => w !== null);
         let estSize = null;
-        if (estimatedSizes.length > 0) {
-          estSize = estimatedSizes.length > 1 
-            ? `${Math.min(...estimatedSizes).toFixed(1)} - ${Math.max(...estimatedSizes).toFixed(1)} cm`
-            : `${estimatedSizes[0].toFixed(1)} cm`;
+        if (isGeminiAnalysis) {
+          // For Gemini, we can just join the ranges
+          estSize = pothole_details.map(p => p.estimated_width_cm_range).join(', ');
+        } else {
+          // Original logic for YOLO
+          const estimatedSizes = pothole_details.map(p => p.estimated_width_cm).filter(w => w !== null);
+          if (estimatedSizes.length > 0) {
+            estSize = estimatedSizes.length > 1 
+              ? `${Math.min(...estimatedSizes).toFixed(1)} - ${Math.max(...estimatedSizes).toFixed(1)} cm`
+              : `${estimatedSizes[0].toFixed(1)} cm`;
+          }
         }
 
         const reportData = {
           original_image_url,
           annotated_image_url,
-          camera_params,
+          camera_params: camera_params || null, // Ensure camera_params is not undefined
           pothole_details,
           lat: latitude,
           lng: longitude,
@@ -96,6 +105,78 @@ const AIAnalysis = () => {
   const handleGoBack = () => navigate(-1);
   const handleImageClick = (imageUrl: string) => setZoomedImage(imageUrl);
   const handleCloseZoom = () => setZoomedImage(null);
+
+  const renderYoloTable = () => (
+    <table className="min-w-full bg-white rounded-lg shadow">
+      <thead className="w-full bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+        <tr>
+          <th className="py-3 px-6 text-left">ID</th>
+          <th className="py-3 px-6 text-left">Confidence</th>
+          <th className="py-3 px-6 text-left">Est. Distance (m)</th>
+          <th className="py-3 px-6 text-left">Est. Width (cm)</th>
+        </tr>
+      </thead>
+      <tbody className="text-gray-600 text-sm font-light">
+        {pothole_details.map((pothole) => (
+          <tr key={pothole.pothole_id_in_image} className="border-b border-gray-200 hover:bg-gray-100">
+            <td className="py-3 px-6 text-left whitespace-nowrap">{pothole.pothole_id_in_image}</td>
+            <td className="py-3 px-6 text-left">{(pothole.confidence * 100).toFixed(2)}%</td>
+            <td className="py-3 px-6 text-left">{pothole.estimated_distance_m ?? 'N/A'}</td>
+            <td className="py-3 px-6 text-left">{pothole.estimated_width_cm?.toFixed(1) ?? 'N/A'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
+  const renderGeminiTable = () => (
+    <table className="min-w-full bg-white rounded-lg shadow">
+      <thead className="w-full bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+        <tr>
+          <th className="py-3 px-6 text-left">ID</th>
+          <th className="py-3 px-6 text-left">Confidence</th>
+          <th className="py-3 px-6 text-left">Size Category</th>
+          <th className="py-3 px-6 text-left">Est. Width Range (cm)</th>
+        </tr>
+      </thead>
+      <tbody className="text-gray-600 text-sm font-light">
+        {pothole_details.map((pothole) => (
+          <tr key={pothole.pothole_id_in_image} className="border-b border-gray-200 hover:bg-gray-100">
+            <td className="py-3 px-6 text-left whitespace-nowrap">{pothole.pothole_id_in_image}</td>
+            <td className="py-3 px-6 text-left">{pothole.confidence ? `${(pothole.confidence * 100).toFixed(2)}%` : 'N/A'}</td>
+            <td className="py-3 px-6 text-left">{pothole.size_category ?? 'N/A'}</td>
+            <td className="py-3 px-6 text-left">{pothole.estimated_width_cm_range ?? 'N/A'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
+  const renderYoloCards = () => (
+    <div className="md:hidden space-y-4">
+      {pothole_details.map(pothole => (
+        <div key={pothole.pothole_id_in_image} className="bg-white p-4 rounded-lg shadow">
+          <div className="font-bold text-lg mb-2">Pothole #{pothole.pothole_id_in_image}</div>
+          <div><strong>Confidence:</strong> {(pothole.confidence * 100).toFixed(2)}%</div>
+          <div><strong>Est. Distance:</strong> {pothole.estimated_distance_m ?? 'N/A'} m</div>
+          <div><strong>Est. Width:</strong> {pothole.estimated_width_cm?.toFixed(1) ?? 'N/A'} cm</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderGeminiCards = () => (
+    <div className="md:hidden space-y-4">
+      {pothole_details.map(pothole => (
+        <div key={pothole.pothole_id_in_image} className="bg-white p-4 rounded-lg shadow">
+          <div className="font-bold text-lg mb-2">Pothole #{pothole.pothole_id_in_image}</div>
+          <div><strong>Confidence:</strong> {pothole.confidence ? `${(pothole.confidence * 100).toFixed(2)}%` : 'N/A'}</div>
+          <div><strong>Size Category:</strong> {pothole.size_category ?? 'N/A'}</div>
+          <div><strong>Est. Width Range:</strong> {pothole.estimated_width_cm_range ?? 'N/A'}</div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -150,37 +231,10 @@ const AIAnalysis = () => {
         <>
           <h2 className="text-2xl font-bold mb-4">Pothole Details</h2>
           <div className="hidden md:block overflow-x-auto">
-            <table className="min-w-full bg-white rounded-lg shadow">
-              <thead className="w-full bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                <tr>
-                  <th className="py-3 px-6 text-left">ID</th>
-                  <th className="py-3 px-6 text-left">Confidence</th>
-                  <th className="py-3 px-6 text-left">Est. Distance (m)</th>
-                  <th className="py-3 px-6 text-left">Est. Width (cm)</th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-600 text-sm font-light">
-                {pothole_details.map((pothole) => (
-                  <tr key={pothole.pothole_id_in_image} className="border-b border-gray-200 hover:bg-gray-100">
-                    <td className="py-3 px-6 text-left whitespace-nowrap">{pothole.pothole_id_in_image}</td>
-                    <td className="py-3 px-6 text-left">{(pothole.confidence * 100).toFixed(2)}%</td>
-                    <td className="py-3 px-6 text-left">{pothole.estimated_distance_m ?? 'N/A'}</td>
-                    <td className="py-3 px-6 text-left">{pothole.estimated_width_cm ?? 'N/A'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {isGeminiAnalysis ? renderGeminiTable() : renderYoloTable()}
           </div>
-
           <div className="md:hidden space-y-4">
-            {pothole_details.map(pothole => (
-              <div key={pothole.pothole_id_in_image} className="bg-white p-4 rounded-lg shadow">
-                <div className="font-bold text-lg mb-2">Pothole #{pothole.pothole_id_in_image}</div>
-                <div><strong>Confidence:</strong> {(pothole.confidence * 100).toFixed(2)}%</div>
-                <div><strong>Est. Distance:</strong> {pothole.estimated_distance_m ?? 'N/A'} m</div>
-                <div><strong>Est. Width:</strong> {pothole.estimated_width_cm ?? 'N/A'} cm</div>
-              </div>
-            ))}
+            {isGeminiAnalysis ? renderGeminiCards() : renderYoloCards()}
           </div>
         </>
       )}
