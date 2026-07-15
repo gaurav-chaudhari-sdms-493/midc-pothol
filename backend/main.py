@@ -40,6 +40,7 @@ app.add_middleware(
 class ReportBase(BaseModel):
     original_image_url: str
     annotated_image_url: str
+    detection_method: Optional[str] = None
     camera_params: Optional[Any] = None
     pothole_details: Optional[Any] = None
     lat: Optional[float] = None
@@ -165,11 +166,18 @@ async def analyze_image(
     if detection_method == "YOLO (best.pt)":
         if not all([camera_height_m, tilt_angle_deg, fov_vertical_deg, fov_horizontal_deg, conf_threshold]):
             raise HTTPException(status_code=422, detail="Missing required parameters for YOLO detection.")
-        return await analyze_image_yolo(image, camera_height_m, tilt_angle_deg, fov_vertical_deg, fov_horizontal_deg, conf_threshold, message)
+        response = await analyze_image_yolo(image, camera_height_m, tilt_angle_deg, fov_vertical_deg, fov_horizontal_deg, conf_threshold, message)
     elif detection_method == "LLM - Gemini":
-        return await analyze_image_gemini(image, message)
+        response = await analyze_image_gemini(image, message)
     else:
         raise HTTPException(status_code=400, detail="Invalid detection method")
+    
+    response_content = response.body.decode('utf-8')
+    import json
+    response_data = json.loads(response_content)
+    response_data['detection_method'] = detection_method
+    return JSONResponse(content=response_data)
+
 
 async def analyze_image_yolo(
     image: UploadFile,

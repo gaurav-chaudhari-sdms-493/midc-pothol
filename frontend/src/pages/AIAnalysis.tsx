@@ -18,13 +18,13 @@ const AIAnalysis = () => {
   const {
     original_image_url,
     annotated_image_url,
+    detection_method,
     pothole_details,
     camera_params,
     message,
   } = analysisResult;
 
-  // Check if the analysis is from Gemini based on the fields in the details
-  const isGeminiAnalysis = pothole_details.length > 0 && 'size_category' in pothole_details[0];
+  const isGeminiAnalysis = detection_method === 'LLM - Gemini';
 
   const geocodeCoordinates = async (lat: number, lng: number) => {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
@@ -49,10 +49,8 @@ const AIAnalysis = () => {
 
         let estSize = null;
         if (isGeminiAnalysis) {
-          // For Gemini, we can just join the ranges
           estSize = pothole_details.map(p => p.estimated_width_cm_range).join(', ');
         } else {
-          // Original logic for YOLO
           const estimatedSizes = pothole_details.map(p => p.estimated_width_cm).filter(w => w !== null);
           if (estimatedSizes.length > 0) {
             estSize = estimatedSizes.length > 1 
@@ -64,13 +62,14 @@ const AIAnalysis = () => {
         const reportData = {
           original_image_url,
           annotated_image_url,
-          camera_params: camera_params || null, // Ensure camera_params is not undefined
+          detection_method,
+          camera_params: camera_params || null,
           pothole_details,
           lat: latitude,
           lng: longitude,
           address: address,
-          severity: 'Medium', // Default severity
-          reportedBy: 'Anonymous', // Default user
+          severity: 'Medium',
+          reportedBy: 'Anonymous',
           estSize: estSize,
           message: message,
           status: 'Reported',
@@ -191,6 +190,11 @@ const AIAnalysis = () => {
       <p className="mb-4">
         <strong>Total Potholes Detected:</strong> {pothole_details.length}
       </p>
+      {detection_method && (
+        <p className="mb-4">
+          <strong>Analysis Model:</strong> {detection_method}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
