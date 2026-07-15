@@ -137,10 +137,11 @@ export default defineConfig({
     }
   },
   server: {
-    host: 'zips-attic-possible.ngrok-free.dev',
+    host: 'ricotta-camping-rash.ngrok-free.dev',
     hmr: {
-        host: 'zips-attic-possible.ngrok-free.dev'
-    }
+        host: 'ricotta-camping-rash.ngrok-free.dev'
+    },
+    allowedHosts: ['ricotta-camping-rash.ngrok-free.dev']
   },
   build: {
     outDir: '../dist'

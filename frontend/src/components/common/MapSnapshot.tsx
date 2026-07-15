@@ -23,10 +23,18 @@ const MapSnapshot = ({ lat, lng }: MapSnapshotProps) => {
   const position: L.LatLngExpression = [lat, lng];
 
   return (
-    <MapContainer center={position} zoom={13} scrollWheelZoom={false} className="w-full h-full rounded-md border border-gray-500" style={{ height: '100%', minHeight: '100px' }}>
+    <MapContainer
+      center={position}
+      zoom={13}
+      scrollWheelZoom={false}
+      className="w-full h-full rounded-md border border-gray-500"
+      style={{ height: '100%', minHeight: '100px' }}
+      zoomControl={false}
+      attributionControl={false}
+    >
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution=""
       />
       <Marker position={position} />
     </MapContainer>
