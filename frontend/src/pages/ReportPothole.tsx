@@ -15,6 +15,9 @@ const ReportPothole = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
 
+  // Detection method state
+  const [detectionMethod, setDetectionMethod] = useState('YOLO (best.pt)');
+
   // Camera parameters state
   const [cameraHeight, setCameraHeight] = useState('1.2');
   const [tiltAngle, setTiltAngle] = useState('45');
@@ -99,19 +102,23 @@ const ReportPothole = () => {
 
     const formData = new FormData();
     formData.append('image', dataURLtoBlob(imagePreview), 'pothole.jpg');
-    formData.append('camera_height_m', cameraHeight);
-    formData.append('tilt_angle_deg', tiltAngle);
-    formData.append('fov_vertical_deg', fovVertical);
-    formData.append('fov_horizontal_deg', fovHorizontal);
-    formData.append('conf_threshold', confThreshold);
+    formData.append('detection_method', detectionMethod);
     formData.append('message', message);
+
+    if (detectionMethod === 'YOLO (best.pt)') {
+      formData.append('camera_height_m', cameraHeight);
+      formData.append('tilt_angle_deg', tiltAngle);
+      formData.append('fov_vertical_deg', fovVertical);
+      formData.append('fov_horizontal_deg', fovHorizontal);
+      formData.append('conf_threshold', confThreshold);
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
         controller.abort();
-        setSubmitError("The request timed out. Please check your connection or try again later.");
+        setSubmitError("The request timed out. The AI model may be under heavy load. Please try again later.");
         setIsSubmitting(false);
-    }, 30000); // 30 seconds timeout
+    }, 60000); // 60 seconds timeout for potentially slow LLM calls
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/analyze`, { 
@@ -168,6 +175,19 @@ const ReportPothole = () => {
         </div>
 
         <div>
+          <label htmlFor="detection_method" className="block text-sm font-medium">Detection Method</label>
+          <select
+            id="detection_method"
+            value={detectionMethod}
+            onChange={(e) => setDetectionMethod(e.target.value)}
+            className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm"
+          >
+            <option>YOLO (best.pt)</option>
+            <option>LLM - Gemini</option>
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="message" className="block text-sm font-medium">Optional Message</label>
           <textarea
             id="message"
@@ -178,28 +198,31 @@ const ReportPothole = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="camera_height_m" className="block text-sm font-medium">Camera Height (m)</label>
-            <input type="number" id="camera_height_m" value={cameraHeight} onChange={e => setCameraHeight(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+        {detectionMethod === 'YOLO (best.pt)' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 border rounded-lg">
+            <h3 className="sm:col-span-2 text-lg font-medium">YOLOv8 Parameters</h3>
+            <div>
+              <label htmlFor="camera_height_m" className="block text-sm font-medium">Camera Height (m)</label>
+              <input type="number" id="camera_height_m" value={cameraHeight} onChange={e => setCameraHeight(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+            </div>
+            <div>
+              <label htmlFor="tilt_angle_deg" className="block text-sm font-medium">Tilt Angle (°)</label>
+              <input type="number" id="tilt_angle_deg" value={tiltAngle} onChange={e => setTiltAngle(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+            </div>
+            <div>
+              <label htmlFor="fov_vertical_deg" className="block text-sm font-medium">Vertical FOV (°)</label>
+              <input type="number" id="fov_vertical_deg" value={fovVertical} onChange={e => setFovVertical(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+            </div>
+            <div>
+              <label htmlFor="fov_horizontal_deg" className="block text-sm font-medium">Horizontal FOV (°)</label>
+              <input type="number" id="fov_horizontal_deg" value={fovHorizontal} onChange={e => setFovHorizontal(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="conf_threshold" className="block text-sm font-medium">Confidence Threshold</label>
+              <input type="number" step="0.1" min="0.1" max="0.9" id="conf_threshold" value={confThreshold} onChange={e => setConfThreshold(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
+            </div>
           </div>
-          <div>
-            <label htmlFor="tilt_angle_deg" className="block text-sm font-medium">Tilt Angle (°)</label>
-            <input type="number" id="tilt_angle_deg" value={tiltAngle} onChange={e => setTiltAngle(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
-          </div>
-          <div>
-            <label htmlFor="fov_vertical_deg" className="block text-sm font-medium">Vertical FOV (°)</label>
-            <input type="number" id="fov_vertical_deg" value={fovVertical} onChange={e => setFovVertical(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
-          </div>
-          <div>
-            <label htmlFor="fov_horizontal_deg" className="block text-sm font-medium">Horizontal FOV (°)</label>
-            <input type="number" id="fov_horizontal_deg" value={fovHorizontal} onChange={e => setFovHorizontal(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="conf_threshold" className="block text-sm font-medium">Confidence Threshold</label>
-            <input type="number" step="0.1" min="0.1" max="0.9" id="conf_threshold" value={confThreshold} onChange={e => setConfThreshold(e.target.value)} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" />
-          </div>
-        </div>
+        )}
 
         <div className="bg-gray-50 p-4 rounded-xl">
           <div className="flex items-center justify-between">

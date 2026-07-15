@@ -9,5 +9,7 @@ ultralytics
 opencv-python-headless
 numpy
 boto3
-
+google-genai
 botocore
+protobuf
+pillow
