@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+psycopg2-binary
+sqlalchemy
+python-dotenv
+ultralytics
+opencv-python-headless
+numpy
+boto3
+google-genai
+botocore
+protobuf
+pillow

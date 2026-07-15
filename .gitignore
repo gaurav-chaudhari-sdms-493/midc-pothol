@@ -8,7 +8,7 @@
 /out
 
 # IDEs
-.idea/
+../.idea/
 .vscode/
 
 # Local environment variables
@@ -26,3 +26,12 @@ yarn-error.log*
 
 # Coverage
 /coverage
+
+# Python Environment
+backend/.venv
+
+frontend/node_modules
+
+.env
+
+.idea/
