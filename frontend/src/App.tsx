@@ -19,7 +19,6 @@ import PushNotificationPrompt from './components/common/PushNotificationPrompt';
 import ShareTargetPage from './pages/ShareTargetPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 import ReportDetailsPage from './pages/ReportDetailsPage';
-import ReportEditPage from './pages/ReportEditPage';
 import { NotificationProvider } from './components/notifications';
 import './components/notifications/Notification.css';
 
@@ -43,7 +42,6 @@ function App() {
               <Route path="reports" element={<ReportsList />} />
               <Route path="my-reports" element={<MyReports />} />
               <Route path="reports/:reportId" element={<ReportDetailsPage />} />
-              <Route path="reports/:reportId/edit" element={<ReportEditPage />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="review" element={<EngineerReview />} />
               <Route path="timeline" element={<TimelinePage />} />

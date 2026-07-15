@@ -140,8 +140,7 @@ export default defineConfig({
     host: 'ricotta-camping-rash.ngrok-free.dev',
     hmr: {
         host: 'ricotta-camping-rash.ngrok-free.dev'
-    },
-    allowedHosts: ['ricotta-camping-rash.ngrok-free.dev']
+    }
   },
   build: {
     outDir: '../dist'
