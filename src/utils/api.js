@@ -7,9 +7,16 @@ export const login = (email, password) => {
 };
 
 export const reportPothole = (data) => {
-  return axios.post(`${API_URL}/potholes`, data);
+  return axios.post(`${API_URL}/api/reports`, data);
 };
 
-export const getPotholes = () => {
-  return axios.get(`${API_URL}/potholes`);
+export const getPotholes = (reportedBy, status) => {
+  const params = {};
+  if (reportedBy) {
+    params.reportedBy = reportedBy;
+  }
+  if (status) {
+    params.status = status;
+  }
+  return axios.get(`${API_URL}/api/reports`, { params });
 };
