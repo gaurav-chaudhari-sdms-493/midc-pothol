@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, MapPin, Upload, X, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { Camera, MapPin, X, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const ReportPothole = () => {
@@ -125,7 +125,7 @@ const ReportPothole = () => {
     }, 60000); // 60 seconds timeout for potentially slow LLM calls
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/analyze`, { 
+      const response = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: 'POST', 
         body: formData,
         signal: controller.signal
@@ -138,6 +138,7 @@ const ReportPothole = () => {
       const result = await response.json();
       navigate('/ai-analysis', { state: { analysisResult: result } });
     } catch (error) {
+      // @ts-ignore
       if (error.name === 'AbortError') {
         // Error already handled by timeout
       } else {

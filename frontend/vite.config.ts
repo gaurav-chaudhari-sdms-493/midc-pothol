@@ -137,10 +137,7 @@ export default defineConfig({
     }
   },
   server: {
-    host: 'ricotta-camping-rash.ngrok-free.dev',
-    hmr: {
-        host: 'ricotta-camping-rash.ngrok-free.dev'
-    }
+    port: 8000
   },
   build: {
     outDir: '../dist'

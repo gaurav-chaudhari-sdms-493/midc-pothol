@@ -1,4 +1,4 @@
-import database as db
+from ..config import database as db
 from sqlalchemy import MetaData
 
 def migrate_data():
@@ -23,7 +23,7 @@ def migrate_data():
         print("Dropping old 'analysis_sessions' table...")
         meta.tables['analysis_sessions'].drop(engine)
 
-    # Now, create the tables based on the new schema defined in database.py
+    # Now, create the tables based on the new schema defined
     print("Creating tables with the new schema...")
     db.init_db()
     

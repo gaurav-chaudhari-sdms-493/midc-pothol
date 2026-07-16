@@ -1,23 +1,19 @@
 import json
 import re
-import os
 from PIL import Image
 from google import genai
-from dotenv import load_dotenv
+from ..config.settings import get_settings
 
-# Load environment variables from .env file
-load_dotenv(dotenv_path='/home/stark/WebstormProjects/midc_pothole/backend/.env')
+settings = get_settings()
 
-# Get the API key from environment variables
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = settings.gemini_api_key
 
 if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in .env file")
+    raise ValueError("GEMINI_API_KEY not found in environment variables")
 
-# Use the Client class for initialization for broader compatibility
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-MODEL_NAME = "gemini-3.1-flash-lite" # gemini-pro is a stable model name
+MODEL_NAME = "gemini-3.1-flash-lite"
 
 DETECT_PROMPT = """You are an expert road-damage inspector analyzing a photo for potholes.
 
@@ -45,12 +41,8 @@ Respond ONLY with valid JSON, no other text, in this exact format:
 If there are no real potholes, respond: {"potholes": []}
 """
 
-def _image_to_base64_not_needed():
-    pass  # kept for compatibility, not used with google-genai SDK
-
 def detect_with_gemini(pil_image: Image.Image):
     try:
-        # Correctly call the generate_content method on the `models` attribute
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=[DETECT_PROMPT, pil_image]
