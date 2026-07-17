@@ -16,4 +16,8 @@ class Settings:
         self.aws_secret_access_key: str = os.getenv("AWS_SECRET_ACCESS_KEY")
         self.aws_s3_bucket_name: str = os.getenv("AWS_S3_BUCKET_NAME")
         self.gemini_api_key: str = os.getenv("GEMINI_API_KEY")
+        self.jwt_secret_key: str = os.getenv("JWT_SECRET_KEY")
+        self.jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
+        self.access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
+settings = get_settings()

@@ -19,3 +19,27 @@ The backend follows a modular, Express-style MVC structure:
 - `scripts/`: Contains standalone scripts, such as database migration scripts.
 - `models/`: Contains the machine learning models.
 - `legacy_mock_data/`: Contains unused mock data files.
+
+## Authentication
+
+The backend uses JWT-based Role-Based Access Control (RBAC) for authentication.
+
+### Roles
+
+- **citizen**: Can create pothole reports and view their own reports.
+- **engineer**: Can view all reports, update report status, and delete reports.
+
+### Endpoints
+
+- `POST /auth/sign-up`: Register a new user.
+- `POST /auth/sign-in`: Log in and receive a JWT.
+- `POST /auth/sign-out`: Log out.
+- `GET /auth/me`: Get the current user's profile.
+
+### Protected Routes
+
+To access protected routes, include the JWT in the `Authorization` header:
+
+```
+Authorization: Bearer <token>
+```

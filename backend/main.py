@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 import logging
-from src.api.router import router
+from src.api.router import router as api_router
+from src.routes import auth as auth_router
 from src.config.database import init_db
 from src.middlewares.cors import add_cors_middleware
 
@@ -17,7 +18,8 @@ app = FastAPI()
 add_cors_middleware(app)
 
 # Include the API router
-app.include_router(router)
+app.include_router(api_router)
+app.include_router(auth_router.router)
 
 @app.get("/")
 def read_root():

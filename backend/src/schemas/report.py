@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 import datetime
 
 Base = declarative_base()
@@ -8,6 +9,7 @@ class Report(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
     
     # Analysis details
     original_image_url = Column(String, nullable=False)
@@ -29,3 +31,5 @@ class Report(Base):
     
     # Consolidated fields
     estSize = Column(String, nullable=True)
+
+    user = relationship("User")
